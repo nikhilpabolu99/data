@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Data Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            text-align: center;
+            padding: 30px 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            padding: 20px;
+            margin: 20px 30px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .config-info {
+            background: linear-gradient(135deg, #f0f7ff 0%, #e6f3ff 100%);
+            border-left: 4px solid #4facfe;
+            padding: 20px;
+            margin: 20px 30px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .buttons-container {
+            padding: 30px;
+            border-bottom: 1px solid #eee;
+            display: none;
+        }
+
+        .buttons-container.show {
+            display: block;
+        }
+
+        .buttons-container h2 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.8em;
+        }
+
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .data-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 20px;
+            border-radius: 15px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .data-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .data-button:hover::before {
+            left: 100%;
+        }
+
+        .data-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .data-button.active {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .record-count {
+            display: block;
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .data-display {
+            padding: 30px;
+            display: none;
+        }
+
+        .data-display.show {
+            display: block;
+        }
+
+        .data-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .data-title {
+            color: #333;
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .data-count {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: linear-gradient(135deg, #f8f9ff 0%, #e6f3ff 100%);
+            color: #333;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        tr:hover {
+            background-color: rgba(79, 172, 254, 0.05);
+        }
+
+        tr:nth-child(even) {
+            background-color: rgba(248, 251, 255, 0.5);
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .file-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #e8f5e8 0%, #d4f4dd 100%);
+            padding: 15px 30px;
+            margin: 20px 30px;
+            border-radius: 10px;
+            border-left: 4px solid #27ae60;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .button-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .data-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .file-info {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            th, td {
+                padding: 10px 8px;
+                font-size: 0.9em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Data Dashboard</h1>
+            <p>Loading data from external JSON file</p>
+        </div>
+
+        <div class="config-info">
+            <strong>📁 Data Source:</strong> data.json<br>
+            <strong>🔧 Setup:</strong> Upload both this HTML file and your "data.json" file to the same directory on your web server.
+        </div>
+
+        <div class="loading" id="loadingSection">
+            <div class="loading-spinner"></div>
+            <p>Loading data...</p>
+        </div>
+
+        <div id="errorSection" style="display: none;">
+        </div>
+
+        <div class="file-info" id="fileInfo" style="display: none;">
+            <div>
+                <strong>✅ Data loaded successfully</strong>
+                <div style="font-size: 0.9em; color: #666; margin-top: 5px;">
+                    Last updated: <span id="lastUpdated"></span>
+                </div>
+            </div>
+            <button class="refresh-btn" onclick="loadData()">🔄 Refresh Data</button>
+        </div>
+
+        <div class="buttons-container" id="buttonsContainer">
+            <h2>📋 Available Data Tables</h2>
+            <div class="button-grid" id="buttonGrid">
+            </div>
+        </div>
+
+        <div class="data-display" id="dataDisplay">
+            <div class="data-header">
+                <h3 class="data-title" id="dataTitle">Select a data table</h3>
+                <span class="data-count" id="dataCount">0 records</span>
+            </div>
+            <div class="table-container">
+                <div class="no-data" id="noData">
+                    Click on a data table button above to view its contents
+                </div>
+                <table id="dataTable" style="display: none;">
+                    <thead id="tableHead"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let jsonData = {};
+        let currentDataKey = null;
+
+        // Configuration - Change this to your JSON file name
+        const DATA_FILE = 'data.json';
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+        });
+
+        async function loadData() {
+            const loadingSection = document.getElementById('loadingSection');
+            const errorSection = document.getElementById('errorSection');
+            const buttonsContainer = document.getElementById('buttonsContainer');
+            const dataDisplay = document.getElementById('dataDisplay');
+            const fileInfo = document.getElementById('fileInfo');
+
+            // Show loading, hide others
+            loadingSection.style.display = 'block';
+            errorSection.style.display = 'none';
+            buttonsContainer.classList.remove('show');
+            dataDisplay.classList.remove('show');
+            fileInfo.style.display = 'none';
+
+            try {
+                const response = await fetch(DATA_FILE);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                jsonData = await response.json();
+                
+                // Validate that we have data
+                if (!jsonData || typeof jsonData !== 'object') {
+                    throw new Error('Invalid JSON data structure');
+                }
+
+                // Check if we have any array data
+                const hasArrayData = Object.values(jsonData).some(value => Array.isArray(value));
+                if (!hasArrayData) {
+                    throw new Error('No array data found in JSON file');
+                }
+
+                // Success - show the interface
+                loadingSection.style.display = 'none';
+                fileInfo.style.display = 'flex';
+                buttonsContainer.classList.add('show');
+                dataDisplay.classList.add('show');
+
+                // Update last updated time
+                document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+
+                // Create buttons
+                createButtons();
+                
+                // Reset data display
+                resetDataDisplay();
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showError(error);
+            }
+        }
+
+        function showError(error) {
+            const loadingSection = document.getElementById('loadingSection');
+            const errorSection = document.getElementById('errorSection');
+
+            loadingSection.style.display = 'none';
+
+            let errorMessage = '';
+            if (error.message.includes('HTTP 404')) {
+                errorMessage = `
+                    <div class="error">
+                        <h3>📁 File Not Found</h3>
+                        <p><strong>${DATA_FILE}</strong> was not found on the server.</p>
+                        <p><strong>Solution:</strong> Make sure you upload your JSON file as "${DATA_FILE}" in the same directory as this HTML file.</p>
+                    </div>
+                `;
+            } else if (error.message.includes('Failed to fetch')) {
+                errorMessage = `
+                    <div class="error">
+                        <h3>🌐 Network Error</h3>
+                        <p>Cannot load the data file. This might be due to:</p>
+                        <ul style="text-align: left; margin: 10px 0;">
+                            <li>CORS policy restrictions (try using a proper web server)</li>
+                            <li>File not uploaded to the server</li>
+                            <li>Server connectivity issues</li>
+                        </ul>
+                        <button class="refresh-btn" onclick="loadData()" style="margin-top: 15px;">🔄 Try Again</button>
+                    </div>
+                `;
+            } else if (error.name === 'SyntaxError') {
+                errorMessage = `
+                    <div class="error">
+                        <h3>📄 Invalid JSON Format</h3>
+                        <p>The ${DATA_FILE} file contains invalid JSON syntax.</p>
+                        <p><strong>Solution:</strong> Check your JSON file for syntax errors (missing commas, brackets, quotes, etc.)</p>
+                        <button class="refresh-btn" onclick="loadData()" style="margin-top: 15px;">🔄 Try Again</button>
+                    </div>
+                `;
+            } else {
+                errorMessage = `
+                    <div class="error">
+                        <h3>❌ Error Loading Data</h3>
+                        <p>${error.message}</p>
+                        <button class="refresh-btn" onclick="loadData()" style="margin-top: 15px;">🔄 Try Again</button>
+                    </div>
+                `;
+            }
+
+            errorSection.innerHTML = errorMessage;
+            errorSection.style.display = 'block';
+        }
+
+        function createButtons() {
+            const buttonGrid = document.getElementById('buttonGrid');
+            buttonGrid.innerHTML = '';
+            
+            Object.keys(jsonData).forEach(key => {
+                if (Array.isArray(jsonData[key])) {
+                    const button = document.createElement('button');
+                    button.className = 'data-button';
+                    
+                    const title = document.createElement('div');
+                    title.textContent = key.replace(/_/g, ' ').toUpperCase();
+                    
+                    const count = document.createElement('span');
+                    count.className = 'record-count';
+                    count.textContent = `${jsonData[key].length} records`;
+                    
+                    button.appendChild(title);
+                    button.appendChild(count);
+                    button.addEventListener('click', () => showData(key));
+                    buttonGrid.appendChild(button);
+                }
+            });
+        }
+
+        function showData(key) {
+            // Update active button
+            document.querySelectorAll('.data-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.closest('.data-button').classList.add('active');
+
+            currentDataKey = key;
+            const data = jsonData[key];
+            
+            if (!Array.isArray(data) || data.length === 0) {
+                showNoData(key);
+                return;
+            }
+
+            // Update title and count
+            document.getElementById('dataTitle').textContent = key.replace(/_/g, ' ').toUpperCase();
+            document.getElementById('dataCount').textContent = `${data.length} records`;
+
+            // Show table
+            document.getElementById('noData').style.display = 'none';
+            document.getElementById('dataTable').style.display = 'table';
+
+            // Create table
+            createTable(data);
+        }
+
+        function createTable(data) {
+            const tableHead = document.getElementById('tableHead');
+            const tableBody = document.getElementById('tableBody');
+            
+            // Clear previous content
+            tableHead.innerHTML = '';
+            tableBody.innerHTML = '';
+
+            if (data.length === 0) return;
+
+            // Get all unique keys from all objects
+            const allKeys = new Set();
+            data.forEach(item => {
+                if (typeof item === 'object' && item !== null) {
+                    Object.keys(item).forEach(key => allKeys.add(key));
+                }
+            });
+
+            const keys = Array.from(allKeys);
+
+            // Create header
+            const headerRow = document.createElement('tr');
+            keys.forEach(key => {
+                const th = document.createElement('th');
+                th.textContent = key.replace(/_/g, ' ').toUpperCase();
+                headerRow.appendChild(th);
+            });
+            tableHead.appendChild(headerRow);
+
+            // Create body rows
+            data.forEach((item, index) => {
+                const row = document.createElement('tr');
+                keys.forEach(key => {
+                    const td = document.createElement('td');
+                    let value = item[key];
+                    
+                    // Handle different data types
+                    if (value === null || value === undefined) {
+                        td.textContent = '-';
+                        td.style.color = '#999';
+                    } else if (typeof value === 'number') {
+                        // Format numbers nicely
+                        td.textContent = value.toLocaleString();
+                    } else if (typeof value === 'object') {
+                        td.textContent = JSON.stringify(value);
+                    } else {
+                        td.textContent = String(value);
+                    }
+                    
+                    row.appendChild(td);
+                });
+                tableBody.appendChild(row);
+            });
+        }
+
+        function showNoData(key) {
+            document.getElementById('dataTitle').textContent = key.replace(/_/g, ' ').toUpperCase();
+            document.getElementById('dataCount').textContent = '0 records';
+            document.getElementById('noData').style.display = 'block';
+            document.getElementById('dataTable').style.display = 'none';
+        }
+
+        function resetDataDisplay() {
+            document.getElementById('dataTitle').textContent = 'Select a data table';
+            document.getElementById('dataCount').textContent = '0 records';
+            document.getElementById('noData').style.display = 'block';
+            document.getElementById('dataTable').style.display = 'none';
+            
+            // Remove active state from all buttons
+            document.querySelectorAll('.data-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+        }
+    </script>
+</body>
+</html>
