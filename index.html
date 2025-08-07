@@ -1,622 +1,214 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Folder Browser</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+<script>
+    class DynamicFolderBrowser {
+        constructor() {
+            this.currentPath = [];
+            this.contentElement = document.getElementById('content');
+            this.breadcrumbElement = document.getElementById('breadcrumb');
+            this.basePath = 'movies'; // Base path for your folders
+            
+            // Your API endpoints
+            this.apiFoldersEndpoint = '/api/folders';
+            this.apiFileEndpoint = '/api/file';
+            
+            this.init();
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e1e2e, #2d2d44);
-            color: #e0e0e0;
-            min-height: 100vh;
-            padding: 20px;
+        init() {
+            this.updateBreadcrumb();
+            this.setupEventListeners();
+            this.loadFolders(); // Load initial folders on page load
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        setupEventListeners() {
+            // Note: Removed the basePath input and scan button for simplicity.
+            // The browser will now automatically load from `this.basePath`.
+            document.getElementById('refreshBtn').onclick = () => this.refreshCurrentView();
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
+        async refreshCurrentView() {
+            await this.loadFolders();
         }
 
-        .header h1 {
-            font-size: 2.5rem;
-            background: linear-gradient(45deg, #6366f1, #8b5cf6, #ec4899);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 10px;
-        }
+        async fetchFolderContents(path = []) {
+            const fullPath = [this.basePath, ...path].join('/');
+            
+            this.contentElement.innerHTML = '<div class="loading">Scanning folders...</div>';
 
-        .breadcrumb {
-            display: flex;
-            align-items: center;
-            margin-bottom: 30px;
-            padding: 15px 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .breadcrumb-item {
-            color: #a0a0a0;
-            cursor: pointer;
-            transition: color 0.3s ease;
-        }
-
-        .breadcrumb-item:hover {
-            color: #6366f1;
-        }
-
-        .breadcrumb-item.active {
-            color: #e0e0e0;
-            font-weight: 600;
-        }
-
-        .breadcrumb-separator {
-            margin: 0 15px;
-            color: #666;
-        }
-
-        .folder-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .folder-btn {
-            background: linear-gradient(145deg, #2d2d44, #383854);
-            border: none;
-            padding: 20px;
-            border-radius: 16px;
-            color: #e0e0e0;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .folder-btn:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
-            border-color: rgba(99, 102, 241, 0.5);
-        }
-
-        .folder-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s ease;
-        }
-
-        .folder-btn:hover::before {
-            left: 100%;
-        }
-
-        .folder-icon {
-            font-size: 2rem;
-            margin-bottom: 10px;
-            display: block;
-        }
-
-        .folder-name {
-            font-size: 1.1rem;
-            font-weight: 600;
-            word-break: break-word;
-        }
-
-        .folder-info {
-            font-size: 0.9rem;
-            color: #a0a0a0;
-            margin-top: 5px;
-        }
-
-        .json-content {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-            padding: 30px;
-            margin-top: 30px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .json-header {
-            font-size: 1.3rem;
-            font-weight: 600;
-            margin-bottom: 20px;
-            color: #6366f1;
-        }
-
-        .json-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 15px;
-        }
-
-        .json-item {
-            background: linear-gradient(145deg, #1a1a2e, #16213e);
-            padding: 15px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .json-item:hover {
-            transform: scale(1.02);
-            border-color: rgba(139, 92, 246, 0.5);
-            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
-        }
-
-        .json-key {
-            font-weight: 600;
-            color: #8b5cf6;
-            margin-bottom: 5px;
-        }
-
-        .json-preview {
-            color: #a0a0a0;
-            font-size: 0.9rem;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .data-display {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .data-display pre {
-            color: #e0e0e0;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-            line-height: 1.5;
-        }
-
-        .back-btn {
-            background: linear-gradient(145deg, #ec4899, #be185d);
-            border: none;
-            padding: 12px 24px;
-            border-radius: 10px;
-            color: white;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            margin-bottom: 20px;
-        }
-
-        .back-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(236, 72, 153, 0.3);
-        }
-
-        .loading {
-            text-align: center;
-            padding: 50px;
-            color: #6366f1;
-            font-size: 1.2rem;
-        }
-
-        .error {
-            background: rgba(239, 68, 68, 0.1);
-            color: #ef4444;
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            margin: 20px 0;
-        }
-
-        .config-panel {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-            padding: 25px;
-            margin-bottom: 30px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .config-input {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            padding: 12px;
-            color: #e0e0e0;
-            width: 100%;
-            margin-bottom: 15px;
-        }
-
-        .config-input:focus {
-            outline: none;
-            border-color: #6366f1;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        .refresh-btn {
-            background: linear-gradient(145deg, #059669, #047857);
-            border: none;
-            padding: 12px 24px;
-            border-radius: 10px;
-            color: white;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            margin-left: 10px;
-        }
-
-        .refresh-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(5, 150, 105, 0.3);
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>📁 Dynamic Folder Browser</h1>
-        </div>
-
-        <div class="config-panel fade-in">
-            <div class="json-header">🔧 Configuration</div>
-            <label style="display: block; margin-bottom: 8px; color: #a0a0a0;">Base Directory Path:</label>
-            <input type="text" id="basePath" class="config-input" value="./movies" placeholder="Enter folder path (e.g., ./movies, /path/to/folders)">
-            <button id="scanBtn" class="folder-btn" style="width: auto; padding: 12px 20px; margin-right: 10px;">
-                <span class="folder-icon">🔍</span>
-                <span class="folder-name">Scan Folders</span>
-            </button>
-            <button id="refreshBtn" class="refresh-btn">
-                <span>🔄 Refresh</span>
-            </button>
-        </div>
-
-        <div class="breadcrumb" id="breadcrumb"></div>
-
-        <div id="content">
-            <div class="loading">Ready to scan folders...</div>
-        </div>
-    </div>
-
-    <script>
-        class DynamicFolderBrowser {
-            constructor() {
-                this.currentPath = [];
-                this.contentElement = document.getElementById('content');
-                this.breadcrumbElement = document.getElementById('breadcrumb');
-                this.basePath = './movies';
-                this.apiEndpoint = '/api'; // Backend API endpoint
+            try {
+                const response = await fetch(`${this.apiFoldersEndpoint}?path=${encodeURIComponent(fullPath)}`);
+                const data = await response.json();
                 
-                this.init();
-            }
-
-            init() {
-                this.updateBreadcrumb();
-                this.setupEventListeners();
-            }
-
-            setupEventListeners() {
-                document.getElementById('scanBtn').onclick = () => this.scanCurrentDirectory();
-                document.getElementById('refreshBtn').onclick = () => this.refreshCurrentView();
-                
-                document.getElementById('basePath').addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        this.scanCurrentDirectory();
-                    }
-                });
-            }
-
-            async scanCurrentDirectory() {
-                this.basePath = document.getElementById('basePath').value.trim() || './movies';
-                this.currentPath = [];
-                await this.loadFolders();
-            }
-
-            async refreshCurrentView() {
-                await this.loadFolders();
-            }
-
-            // Dynamic API call to get real folder structure
-            async fetchFolderContents(path = []) {
-                const fullPath = [this.basePath, ...path].join('/').replace(/\/+/g, '/');
-                
-                try {
-                    // Try different API endpoints
-                    const endpoints = [
-                        `/api/folders?path=${encodeURIComponent(fullPath)}`,
-                        `/api/scan?dir=${encodeURIComponent(fullPath)}`,
-                        `/folders?path=${encodeURIComponent(fullPath)}`
-                    ];
-
-                    for (const endpoint of endpoints) {
-                        try {
-                            const response = await fetch(endpoint);
-                            if (response.ok) {
-                                const data = await response.json();
-                                console.log('Fetched folder contents:', data);
-                                return data;
-                            }
-                        } catch (err) {
-                            console.log(`Endpoint ${endpoint} failed:`, err.message);
-                        }
-                    }
-
-                    // Fallback: simulate directory scanning for demo
-                    return this.simulateDirectoryScanning(path);
-
-                } catch (error) {
-                    console.error('Error fetching folder contents:', error);
-                    throw error;
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || 'Failed to fetch folder contents.');
                 }
-            }
-
-            // Simulate directory scanning when no backend is available
-            simulateDirectoryScanning(path) {
-                console.log('No backend API available, using simulation for path:', path);
                 
-                // Simulate realistic folder structure based on current path
-                if (path.length === 0) {
-                    return {
-                        folders: ['Action Movies', 'Comedy Movies', 'Drama Movies', 'Sci-Fi Movies'],
-                        files: [],
-                        path: this.basePath
-                    };
-                } else if (path.length === 1) {
-                    const genre = path[0];
-                    const movies = {
-                        'Action Movies': ['The Matrix', 'John Wick', 'Mad Max Fury Road', 'Die Hard'],
-                        'Comedy Movies': ['The Grand Budapest Hotel', 'Superbad', 'Anchorman'],
-                        'Drama Movies': ['The Shawshank Redemption', 'Forrest Gump', 'The Godfather'],
-                        'Sci-Fi Movies': ['Blade Runner', 'Interstellar', 'The Martian']
-                    };
-                    
-                    return {
-                        folders: movies[genre] || ['Sample Movie 1', 'Sample Movie 2'],
-                        files: [],
-                        path: `${this.basePath}/${genre}`
-                    };
-                } else if (path.length === 2) {
-                    return {
-                        folders: [],
-                        files: ['movie_data.json', 'details.json', 'metadata.json'],
-                        path: `${this.basePath}/${path.join('/')}`
-                    };
-                } else {
-                    return { folders: [], files: [], path: `${this.basePath}/${path.join('/')}` };
-                }
+                return data;
+            } catch (error) {
+                console.error('Error fetching folder contents:', error);
+                throw error;
             }
+        }
 
-            async loadFolders() {
-                this.contentElement.innerHTML = '<div class="loading">Scanning folders...</div>';
-                this.updateBreadcrumb();
+        async loadFolders() {
+            this.updateBreadcrumb();
+            
+            try {
+                const data = await this.fetchFolderContents(this.currentPath);
                 
-                try {
-                    const data = await this.fetchFolderContents(this.currentPath);
-                    
-                    if (!data) {
-                        this.showError('Failed to load folder contents');
-                        return;
-                    }
-
-                    this.renderFolderContents(data);
-                    
-                } catch (error) {
-                    console.error('Error loading folders:', error);
-                    this.showError(`Error loading folders: ${error.message}`);
-                }
-            }
-
-            renderFolderContents(data) {
-                const { folders = [], files = [] } = data;
-                
-                let content = '<div class="fade-in">';
-
-                // Show folders
-                if (folders.length > 0) {
-                    content += '<div class="folder-grid">';
-                    folders.forEach(folder => {
-                        const icon = this.getFolderIcon(folder, files);
-                        content += `
-                            <button class="folder-btn" onclick="browser.navigateToFolder('${this.escapeHtml(folder)}')">
-                                <span class="folder-icon">${icon}</span>
-                                <span class="folder-name">${this.escapeHtml(folder)}</span>
-                                <span class="folder-info">Folder</span>
-                            </button>
-                        `;
-                    });
-                    content += '</div>';
+                if (!data) {
+                    this.showError('Failed to load folder contents.');
+                    return;
                 }
 
-                // Show JSON files
-                const jsonFiles = files.filter(file => file.endsWith('.json'));
-                if (jsonFiles.length > 0) {
-                    content += this.renderJsonFiles(jsonFiles);
-                }
-
-                // Show message if empty
-                if (folders.length === 0 && files.length === 0) {
-                    content += '<div class="error">No folders or files found in this directory.</div>';
-                } else if (folders.length === 0 && jsonFiles.length === 0) {
-                    content += `<div class="error">Found ${files.length} files, but no JSON files to display.</div>`;
-                }
-
-                content += '</div>';
-                this.contentElement.innerHTML = content;
-            }
-
-            renderJsonFiles(jsonFiles) {
-                let content = '<div class="json-content"><div class="json-header">📄 JSON Files Found</div><div class="json-grid">';
+                this.renderFolderContents(data);
                 
-                jsonFiles.forEach(file => {
+            } catch (error) {
+                console.error('Error loading folders:', error);
+                this.showError(`Error loading folders: ${error.message}`);
+            }
+        }
+
+        renderFolderContents(data) {
+            const { folders = [], files = [] } = data;
+            let content = '<div class="fade-in">';
+
+            if (folders.length > 0) {
+                content += '<div class="folder-grid">';
+                folders.forEach(folder => {
+                    const icon = this.getFolderIcon(folder);
                     content += `
-                        <div class="json-item" onclick="browser.loadJsonFile('${this.escapeHtml(file)}')">
-                            <div class="json-key">${this.escapeHtml(file)}</div>
-                            <div class="json-preview">Click to load content</div>
-                        </div>
+                        <button class="folder-btn" onclick="browser.navigateToFolder('${this.escapeHtml(folder)}')">
+                            <span class="folder-icon">${icon}</span>
+                            <span class="folder-name">${this.escapeHtml(folder)}</span>
+                            <span class="folder-info">Folder</span>
+                        </button>
                     `;
                 });
-                
-                content += '</div></div>';
-                return content;
+                content += '</div>';
             }
 
-            getFolderIcon(folderName, files) {
-                // Smart icon detection based on folder name and contents
-                const name = folderName.toLowerCase();
-                
-                if (name.includes('movie') || name.includes('film')) return '🎬';
-                if (name.includes('action')) return '💥';
-                if (name.includes('comedy')) return '😂';
-                if (name.includes('drama')) return '🎭';
-                if (name.includes('sci-fi') || name.includes('science')) return '🚀';
-                if (name.includes('horror')) return '👻';
-                if (name.includes('romance')) return '💕';
-                if (files && files.some(f => f.endsWith('.json'))) return '🎬';
-                
-                return '📁';
+            const jsonFiles = files.filter(file => file.endsWith('.json'));
+            if (jsonFiles.length > 0) {
+                content += this.renderJsonFiles(jsonFiles);
             }
 
-            async navigateToFolder(folder) {
-                this.currentPath.push(folder);
-                await this.loadFolders();
+            if (folders.length === 0 && files.length === 0) {
+                content += '<div class="error">No folders or files found in this directory.</div>';
+            } else if (folders.length === 0 && jsonFiles.length === 0) {
+                content += `<div class="error">Found ${files.length} files, but no JSON files to display.</div>`;
             }
 
-            async navigateTo(path) {
-                this.currentPath = [...path];
-                await this.loadFolders();
-            }
+            content += '</div>';
+            this.contentElement.innerHTML = content;
+        }
 
-            updateBreadcrumb() {
-                this.breadcrumbElement.innerHTML = '';
-                
-                // Home
-                const homeItem = document.createElement('span');
-                homeItem.className = 'breadcrumb-item';
-                homeItem.textContent = '🏠 ' + this.basePath;
-                homeItem.onclick = () => this.navigateTo([]);
-                this.breadcrumbElement.appendChild(homeItem);
-
-                // Path items
-                this.currentPath.forEach((item, index) => {
-                    const separator = document.createElement('span');
-                    separator.className = 'breadcrumb-separator';
-                    separator.textContent = '/';
-                    this.breadcrumbElement.appendChild(separator);
-
-                    const pathItem = document.createElement('span');
-                    pathItem.className = index === this.currentPath.length - 1 ? 'breadcrumb-item active' : 'breadcrumb-item';
-                    pathItem.textContent = item;
-                    if (index < this.currentPath.length - 1) {
-                        pathItem.onclick = () => this.navigateTo(this.currentPath.slice(0, index + 1));
-                    }
-                    this.breadcrumbElement.appendChild(pathItem);
-                });
-            }
-
-            async loadJsonFile(filename) {
-                const fullPath = [this.basePath, ...this.currentPath, filename].join('/');
-                
-                try {
-                    const response = await fetch(`/api/file?path=${encodeURIComponent(fullPath)}`);
-                    if (response.ok) {
-                        const jsonData = await response.json();
-                        this.displayJsonData(filename, jsonData);
-                    } else {
-                        // Fallback for demo
-                        const mockData = {
-                            title: filename.replace('.json', ''),
-                            type: 'Movie Data',
-                            lastModified: new Date().toISOString(),
-                            note: 'This is simulated data - connect to real backend API for actual file contents'
-                        };
-                        this.displayJsonData(filename, mockData);
-                    }
-                } catch (error) {
-                    this.showError(`Error loading JSON file: ${error.message}`);
-                }
-            }
-
-            displayJsonData(filename, data) {
-                const existingDisplay = document.querySelector('.data-display');
-                if (existingDisplay) {
-                    existingDisplay.remove();
-                }
-
-                const displayDiv = document.createElement('div');
-                displayDiv.className = 'data-display fade-in';
-                displayDiv.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="color: #6366f1; margin: 0;">📊 ${this.escapeHtml(filename)}</h3>
-                        <button onclick="this.parentElement.parentElement.remove()" style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #ef4444; padding: 5px 10px; border-radius: 6px; cursor: pointer;">Close</button>
-                    </div>
-                    <pre>${JSON.stringify(data, null, 2)}</pre>
-                `;
-                
-                this.contentElement.appendChild(displayDiv);
-                displayDiv.scrollIntoView({ behavior: 'smooth' });
-            }
-
-            showError(message) {
-                this.contentElement.innerHTML = `
-                    <div class="error">
-                        <h3>Error</h3>
-                        <p>${this.escapeHtml(message)}</p>
-                        <p><strong>To make this work with real folders:</strong></p>
-                        <ol>
-                            <li>Set up a backend API (Node.js, Python, etc.)</li>
-                            <li>Create endpoints: <code>/api/folders</code> and <code>/api/file</code></li>
-                            <li>The API should scan actual directories and return folder/file lists</li>
-                        </ol>
+        renderJsonFiles(jsonFiles) {
+            let content = '<div class="json-content"><div class="json-header">📄 JSON Files Found</div><div class="json-grid">';
+            
+            jsonFiles.forEach(file => {
+                content += `
+                    <div class="json-item" onclick="browser.loadJsonFile('${this.escapeHtml(file)}')">
+                        <div class="json-key">${this.escapeHtml(file)}</div>
+                        <div class="json-preview">Click to load content</div>
                     </div>
                 `;
-            }
+            });
+            
+            content += '</div></div>';
+            return content;
+        }
 
-            escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
+        getFolderIcon(folderName) {
+            const name = folderName.toLowerCase();
+            if (name.includes('movie') || name.includes('film')) return '🎬';
+            if (name.includes('action')) return '💥';
+            if (name.includes('comedy')) return '😂';
+            if (name.includes('drama')) return '🎭';
+            return '📁';
+        }
+
+        async navigateToFolder(folder) {
+            this.currentPath.push(folder);
+            await this.loadFolders();
+        }
+
+        async navigateTo(path) {
+            this.currentPath = [...path];
+            await this.loadFolders();
+        }
+
+        updateBreadcrumb() {
+            this.breadcrumbElement.innerHTML = '';
+            
+            const homeItem = document.createElement('span');
+            homeItem.className = 'breadcrumb-item';
+            homeItem.textContent = '🏠 ' + this.basePath;
+            homeItem.onclick = () => this.navigateTo([]);
+            this.breadcrumbElement.appendChild(homeItem);
+
+            this.currentPath.forEach((item, index) => {
+                const separator = document.createElement('span');
+                separator.className = 'breadcrumb-separator';
+                separator.textContent = '/';
+                this.breadcrumbElement.appendChild(separator);
+
+                const pathItem = document.createElement('span');
+                pathItem.className = index === this.currentPath.length - 1 ? 'breadcrumb-item active' : 'breadcrumb-item';
+                pathItem.textContent = item;
+                if (index < this.currentPath.length - 1) {
+                    pathItem.onclick = () => this.navigateTo(this.currentPath.slice(0, index + 1));
+                }
+                this.breadcrumbElement.appendChild(pathItem);
+            });
+        }
+
+        async loadJsonFile(filename) {
+            const fullPath = [this.basePath, ...this.currentPath, filename].join('/');
+            this.contentElement.innerHTML += '<div class="loading">Loading file...</div>';
+
+            try {
+                const response = await fetch(`${this.apiFileEndpoint}?path=${encodeURIComponent(fullPath)}`);
+                if (response.ok) {
+                    const jsonData = await response.json();
+                    this.displayJsonData(filename, jsonData);
+                } else {
+                    throw new Error(`Failed to load file: ${response.statusText}`);
+                }
+            } catch (error) {
+                this.showError(`Error loading JSON file: ${error.message}`);
             }
         }
 
-        // Initialize the browser
-        const browser = new DynamicFolderBrowser();
+        displayJsonData(filename, data) {
+            const existingDisplay = document.querySelector('.data-display');
+            if (existingDisplay) {
+                existingDisplay.remove();
+            }
 
-        console.log('🚀 Dynamic Folder Browser initialized!');
-        console.log('📋 To connect to real folders, create a backend API with these endpoints:');
-        console.log('   GET /api/folders?path=<folder_path> - Returns {folders: [], files: []}');
-        console.log('   GET /api/file?path=<file_path> - Returns JSON file contents');
-    </script>
-</body>
-</html>
+            const displayDiv = document.createElement('div');
+            displayDiv.className = 'data-display fade-in';
+            displayDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="color: #6366f1; margin: 0;">📊 ${this.escapeHtml(filename)}</h3>
+                    <button onclick="this.parentElement.parentElement.remove()" style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #ef4444; padding: 5px 10px; border-radius: 6px; cursor: pointer;">Close</button>
+                </div>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+            
+            this.contentElement.appendChild(displayDiv);
+            displayDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        showError(message) {
+            this.contentElement.innerHTML = `<div class="error"><h3>Error</h3><p>${this.escapeHtml(message)}</p></div>`;
+        }
+
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    }
+
+    const browser = new DynamicFolderBrowser();
+</script>
