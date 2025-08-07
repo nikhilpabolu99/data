@@ -300,8 +300,8 @@
         </div>
 
         <div class="config-info">
-            <strong>📁 Data Source:</strong> war2_dfgross_20250806.json<br>
-            <strong>🔧 Setup:</strong> Upload both this HTML file and your "war2_dfgross_20250806.json" file to the same directory on your web server.
+            <strong>📁 Data Source:</strong> data.json<br>
+            <strong>🔧 Setup:</strong> Upload both this HTML file and your "data.json" file to the same directory on your web server.
         </div>
 
         <div class="loading" id="loadingSection">
@@ -350,7 +350,7 @@
         let currentDataKey = null;
 
         // Configuration - Change this to your JSON file name
-        const DATA_FILE = 'war2_dfgross_20250806.json';
+        const DATA_FILE = 'data.json';
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
@@ -378,7 +378,14 @@
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
 
-                jsonData = await response.json();
+                // Get the raw text first
+                const rawText = await response.text();
+                
+                // Replace NaN values with null before parsing
+                const cleanedText = rawText.replace(/:\s*NaN/g, ': null');
+                
+                // Parse the cleaned JSON
+                jsonData = JSON.parse(cleanedText);
                 
                 // Validate that we have data
                 if (!jsonData || typeof jsonData !== 'object') {
