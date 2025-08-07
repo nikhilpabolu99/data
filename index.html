@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Movie Explorer</title>
+    <title>JSON Data Viewer</title>
     <style>
         * {
             margin: 0;
@@ -23,198 +23,271 @@
             margin: 0 auto;
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
-            padding: 40px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            min-height: 80vh;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
         }
 
         .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
             text-align: center;
-            margin-bottom: 40px;
+            padding: 30px 20px;
         }
 
         .header h1 {
-            color: #2c3e50;
-            font-size: 3em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .breadcrumb {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 30px;
-            font-size: 1.1em;
-            color: #666;
-        }
-
-        .breadcrumb-item {
-            cursor: pointer;
-            color: #667eea;
-            text-decoration: none;
-            padding: 8px 12px;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .breadcrumb-item:hover {
-            background: rgba(102, 126, 234, 0.1);
-        }
-
-        .breadcrumb-item.current {
-            color: #2c3e50;
-            font-weight: bold;
-            cursor: default;
-        }
-
-        .breadcrumb-separator {
-            color: #bbb;
-            font-size: 1.2em;
-        }
-
-        /* Level 0: Movies button (round) */
-        .movies-main-button {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 60px auto;
-        }
-
-        .main-movies-btn {
-            width: 200px;
-            height: 200px;
-            border-radius: 50%;
-            background: linear-gradient(145deg, #667eea, #764ba2);
-            border: none;
-            cursor: pointer;
-            transition: all 0.4s ease;
-            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3);
-            color: white;
-            font-size: 1.5em;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        .main-movies-btn:hover {
-            transform: translateY(-10px) scale(1.05);
-            box-shadow: 0 25px 50px rgba(102, 126, 234, 0.4);
-            background: linear-gradient(145deg, #764ba2, #667eea);
-        }
-
-        /* Level 1+: Rectangle buttons */
-        .folders-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-
-        .folder-card {
-            background: linear-gradient(145deg, #ffffff, #f8f9fa);
-            border-radius: 15px;
-            padding: 25px;
-            text-align: center;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-            cursor: pointer;
-            min-height: 140px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .folder-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
-            border-color: #667eea;
-        }
-
-        .folder-icon {
             font-size: 2.5em;
             margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
-        .folder-name {
-            font-size: 1.3em;
-            font-weight: bold;
-            color: #2c3e50;
-            text-transform: capitalize;
-            word-break: break-word;
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
         }
 
         .loading {
             text-align: center;
-            padding: 60px 0;
-            color: #7f8c8d;
-            font-size: 1.2em;
+            padding: 50px;
+            color: #666;
         }
 
-        .loading::after {
-            content: '';
-            animation: dots 1.5s steps(5, end) infinite;
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
         }
 
-        @keyframes dots {
-            0%, 20% { content: ''; }
-            40% { content: '.'; }
-            60% { content: '..'; }
-            80%, 100% { content: '...'; }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        .error-message {
-            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+        .error {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
             color: white;
-            padding: 25px;
-            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 30px;
+            border-radius: 10px;
             text-align: center;
-            margin: 40px 0;
         }
 
-        .back-button {
-            background: linear-gradient(145deg, #95a5a6, #7f8c8d);
+        .config-info {
+            background: linear-gradient(135deg, #f0f7ff 0%, #e6f3ff 100%);
+            border-left: 4px solid #4facfe;
+            padding: 20px;
+            margin: 20px 30px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .buttons-container {
+            padding: 30px;
+            border-bottom: 1px solid #eee;
+            display: none;
+        }
+
+        .buttons-container.show {
+            display: block;
+        }
+
+        .buttons-container h2 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.8em;
+        }
+
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .data-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 12px 25px;
-            border-radius: 25px;
+            padding: 20px;
+            border-radius: 15px;
+            font-size: 1.1em;
+            font-weight: 600;
             cursor: pointer;
-            font-size: 1em;
-            margin-bottom: 20px;
             transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            position: relative;
+            overflow: hidden;
         }
 
-        .back-button:hover {
-            background: linear-gradient(145deg, #7f8c8d, #95a5a6);
-            transform: translateY(-2px);
+        .data-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .data-button:hover::before {
+            left: 100%;
+        }
+
+        .data-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .data-button.active {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .record-count {
+            display: block;
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .data-display {
+            padding: 30px;
+            display: none;
+        }
+
+        .data-display.show {
+            display: block;
+        }
+
+        .data-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .data-title {
+            color: #333;
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .data-count {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: linear-gradient(135deg, #f8f9ff 0%, #e6f3ff 100%);
+            color: #333;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        tr:hover {
+            background-color: rgba(79, 172, 254, 0.05);
+        }
+
+        tr:nth-child(even) {
+            background-color: rgba(248, 251, 255, 0.5);
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .file-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #e8f5e8 0%, #d4f4dd 100%);
+            padding: 15px 30px;
+            margin: 20px 30px;
+            border-radius: 10px;
+            border-left: 4px solid #27ae60;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
         }
 
         @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+
             .header h1 {
                 font-size: 2em;
             }
-            
-            .folders-grid {
+
+            .button-grid {
                 grid-template-columns: 1fr;
             }
-            
-            .container {
-                padding: 20px;
+
+            .data-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
             }
 
-            .main-movies-btn {
-                width: 150px;
-                height: 150px;
-                font-size: 1.2em;
+            .file-info {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
             }
 
-            .breadcrumb {
-                flex-wrap: wrap;
-                font-size: 1em;
+            th, td {
+                padding: 10px 8px;
+                font-size: 0.9em;
             }
         }
     </style>
@@ -222,269 +295,305 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎬 Movie Explorer</h1>
-            <p id="headerSubtitle">Click to explore your movie collection</p>
+            <h1>📊 Data Dashboard</h1>
+            <p>Loading data from external JSON file</p>
         </div>
 
-        <div id="breadcrumb" class="breadcrumb" style="display: none;"></div>
+        <div class="config-info">
+            <strong>📁 Data Source:</strong> data.json<br>
+            <strong>🔧 Setup:</strong> Upload both this HTML file and your "data.json" file to the same directory on your web server.
+        </div>
 
-        <div id="content">
-            <div class="movies-main-button">
-                <button class="main-movies-btn" onclick="exploreMovies()">
-                    🎬<br>Movies
-                </button>
+        <div class="loading" id="loadingSection">
+            <div class="loading-spinner"></div>
+            <p>Loading data...</p>
+        </div>
+
+        <div id="errorSection" style="display: none;">
+        </div>
+
+        <div class="file-info" id="fileInfo" style="display: none;">
+            <div>
+                <strong>✅ Data loaded successfully</strong>
+                <div style="font-size: 0.9em; color: #666; margin-top: 5px;">
+                    Last updated: <span id="lastUpdated"></span>
+                </div>
+            </div>
+            <button class="refresh-btn" onclick="loadData()">🔄 Refresh Data</button>
+        </div>
+
+        <div class="buttons-container" id="buttonsContainer">
+            <h2>📋 Available Data Tables</h2>
+            <div class="button-grid" id="buttonGrid">
+            </div>
+        </div>
+
+        <div class="data-display" id="dataDisplay">
+            <div class="data-header">
+                <h3 class="data-title" id="dataTitle">Select a data table</h3>
+                <span class="data-count" id="dataCount">0 records</span>
+            </div>
+            <div class="table-container">
+                <div class="no-data" id="noData">
+                    Click on a data table button above to view its contents
+                </div>
+                <table id="dataTable" style="display: none;">
+                    <thead id="tableHead"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
             </div>
         </div>
     </div>
 
     <script>
-        let currentPath = [];
-        let folderStructure = {};
+        let jsonData = {};
+        let currentDataKey = null;
 
-        const folderIcons = {
-            'movies': '🎬',
-            'action': '💥', 'comedy': '😄', 'horror': '👻', 'drama': '🎭', 
-            'thriller': '🔪', 'romance': '💕', 'scifi': '🚀', 'adventure': '🗺️',
-            'documentary': '📽️', 'animated': '🎨', 'musical': '🎵', 'western': '🤠',
-            'crime': '🔫', 'fantasy': '🧙', 'mystery': '🕵️', 'episode': '📺',
-            'season': '📺', 'part': '🎞️', 'movie': '🎬', 'film': '🎬'
-        };
+        // Configuration - Change this to your JSON file name
+        const DATA_FILE = 'data.json';
 
-        function getIcon(folderName) {
-            const name = folderName.toLowerCase();
-            
-            // Check for exact matches
-            if (folderIcons[name]) return folderIcons[name];
-            
-            // Check for partial matches
-            for (const [key, icon] of Object.entries(folderIcons)) {
-                if (name.includes(key)) return icon;
-            }
-            
-            // Default icons based on folder naming patterns
-            if (name.match(/^(movie|film)\d+$/)) return '🎬';
-            if (name.match(/^episode\d+$/)) return '📺';
-            if (name.match(/^season\d+$/)) return '📺';
-            if (name.match(/^part\d+$/)) return '🎞️';
-            
-            return '📁'; // Default folder icon
-        }
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+        });
 
-        async function scanFolder(path) {
-            const folders = [];
-            const fullPath = path.length > 0 ? path.join('/') + '/' : '';
-            
+        async function loadData() {
+            const loadingSection = document.getElementById('loadingSection');
+            const errorSection = document.getElementById('errorSection');
+            const buttonsContainer = document.getElementById('buttonsContainer');
+            const dataDisplay = document.getElementById('dataDisplay');
+            const fileInfo = document.getElementById('fileInfo');
+
+            // Show loading, hide others
+            loadingSection.style.display = 'block';
+            errorSection.style.display = 'none';
+            buttonsContainer.classList.remove('show');
+            dataDisplay.classList.remove('show');
+            fileInfo.style.display = 'none';
+
             try {
-                // Try to get the directory listing via a folders.json file if it exists
-                const listingResponse = await fetch(`${fullPath}folders.json`);
-                if (listingResponse.ok) {
-                    const folderData = await listingResponse.json();
-                    return folderData.folders || [];
-                }
-            } catch (e) {
-                // folders.json doesn't exist, continue with dynamic detection
-            }
-            
-            // Dynamic folder detection - we'll use a different approach
-            // Since we can't list directories directly, we'll look for common indicators
-            const detectedFolders = new Set();
-            
-            // Method 1: Check for a .folders file that lists directory names
-            try {
-                const foldersFileResponse = await fetch(`${fullPath}.folders`);
-                if (foldersFileResponse.ok) {
-                    const foldersText = await foldersFileResponse.text();
-                    const folderNames = foldersText.split('\n').filter(name => name.trim());
-                    folderNames.forEach(name => detectedFolders.add(name.trim()));
-                }
-            } catch (e) {
-                // .folders file doesn't exist
-            }
-            
-            // Method 2: Try to find folders by checking common patterns
-            // This is a brute force approach but works for static hosting
-            const possiblePatterns = [
-                // Numbers
-                ...Array.from({length: 50}, (_, i) => `movie${i + 1}`),
-                ...Array.from({length: 50}, (_, i) => `film${i + 1}`),
-                ...Array.from({length: 20}, (_, i) => `episode${i + 1}`),
-                ...Array.from({length: 10}, (_, i) => `season${i + 1}`),
-                ...Array.from({length: 10}, (_, i) => `part${i + 1}`),
-                // Letters
-                ...Array.from({length: 26}, (_, i) => `movie${String.fromCharCode(97 + i)}`),
-                // Common genres
-                'action', 'comedy', 'horror', 'drama', 'thriller', 'romance', 'scifi', 'adventure',
-                'documentary', 'animated', 'musical', 'western', 'crime', 'fantasy', 'mystery'
-            ];
-            
-            // Test each possible folder with multiple file types
-            const testFiles = ['index.html', 'index.htm', 'info.json', 'movie.mp4', 'video.mp4', 'film.mkv', 'watch.html'];
-            
-            for (const folderName of possiblePatterns) {
-                for (const testFile of testFiles) {
-                    try {
-                        const testPath = `${fullPath}${folderName}/${testFile}`;
-                        const response = await fetch(testPath, { method: 'HEAD' });
-                        
-                        if (response.ok) {
-                            detectedFolders.add(folderName);
-                            break; // Found this folder, move to next
-                        }
-                    } catch (e) {
-                        // File doesn't exist, try next
-                    }
-                }
-            }
-            
-            return Array.from(detectedFolders).sort();
-        }
-
-        async function exploreMovies() {
-            currentPath = ['movies'];
-            await loadCurrentLevel();
-        }
-
-        async function navigateToFolder(folderName) {
-            currentPath.push(folderName);
-            await loadCurrentLevel();
-        }
-
-        async function navigateTo(index) {
-            if (index === 0) {
-                // Go to root
-                currentPath = [];
-                showMainScreen();
-            } else {
-                currentPath = currentPath.slice(0, index);
-                await loadCurrentLevel();
-            }
-        }
-
-        async function loadCurrentLevel() {
-            const content = document.getElementById('content');
-            const breadcrumb = document.getElementById('breadcrumb');
-            const headerSubtitle = document.getElementById('headerSubtitle');
-            
-            content.innerHTML = '<div class="loading">Scanning folders</div>';
-            breadcrumb.style.display = 'flex';
-            
-            // Update breadcrumb
-            updateBreadcrumb();
-            
-            try {
-                const folders = await scanFolder(currentPath);
+                const response = await fetch(DATA_FILE);
                 
-                if (folders.length === 0) {
-                    content.innerHTML = `
-                        <div class="error-message">
-                            <h3>No subfolders found</h3>
-                            <p>No accessible folders found in /${currentPath.join('/')}/</p>
-                            <p>Make sure your folders contain index.html, info.json, or video files</p>
-                        </div>
-                    `;
-                    headerSubtitle.textContent = `Empty folder: ${currentPath.join(' → ')}`;
-                } else {
-                    displayFolders(folders);
-                    headerSubtitle.textContent = `Exploring: ${currentPath.join(' → ')}`;
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
+
+                // Get the raw text first
+                const rawText = await response.text();
                 
+                // Replace NaN values with null before parsing
+                const cleanedText = rawText.replace(/:\s*NaN/g, ': null');
+                
+                // Parse the cleaned JSON
+                jsonData = JSON.parse(cleanedText);
+                
+                // Validate that we have data
+                if (!jsonData || typeof jsonData !== 'object') {
+                    throw new Error('Invalid JSON data structure');
+                }
+
+                // Check if we have any array data
+                const hasArrayData = Object.values(jsonData).some(value => Array.isArray(value));
+                if (!hasArrayData) {
+                    throw new Error('No array data found in JSON file');
+                }
+
+                // Success - show the interface
+                loadingSection.style.display = 'none';
+                fileInfo.style.display = 'flex';
+                buttonsContainer.classList.add('show');
+                dataDisplay.classList.add('show');
+
+                // Update last updated time
+                document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+
+                // Create buttons
+                createButtons();
+                
+                // Reset data display
+                resetDataDisplay();
+
             } catch (error) {
-                content.innerHTML = `
-                    <div class="error-message">
-                        <h3>Error scanning folders</h3>
-                        <p>Could not access /${currentPath.join('/')}/</p>
-                        <p>Make sure the folder exists and contains accessible files</p>
+                console.error('Error loading data:', error);
+                showError(error);
+            }
+        }
+
+        function showError(error) {
+            const loadingSection = document.getElementById('loadingSection');
+            const errorSection = document.getElementById('errorSection');
+
+            loadingSection.style.display = 'none';
+
+            let errorMessage = '';
+            if (error.message.includes('HTTP 404')) {
+                errorMessage = `
+                    <div class="error">
+                        <h3>📁 File Not Found</h3>
+                        <p><strong>${DATA_FILE}</strong> was not found on the server.</p>
+                        <p><strong>Solution:</strong> Make sure you upload your JSON file as "${DATA_FILE}" in the same directory as this HTML file.</p>
+                    </div>
+                `;
+            } else if (error.message.includes('Failed to fetch')) {
+                errorMessage = `
+                    <div class="error">
+                        <h3>🌐 Network Error</h3>
+                        <p>Cannot load the data file. This might be due to:</p>
+                        <ul style="text-align: left; margin: 10px 0;">
+                            <li>CORS policy restrictions (try using a proper web server)</li>
+                            <li>File not uploaded to the server</li>
+                            <li>Server connectivity issues</li>
+                        </ul>
+                        <button class="refresh-btn" onclick="loadData()" style="margin-top: 15px;">🔄 Try Again</button>
+                    </div>
+                `;
+            } else if (error.name === 'SyntaxError') {
+                errorMessage = `
+                    <div class="error">
+                        <h3>📄 Invalid JSON Format</h3>
+                        <p>The ${DATA_FILE} file contains invalid JSON syntax.</p>
+                        <p><strong>Solution:</strong> Check your JSON file for syntax errors (missing commas, brackets, quotes, etc.)</p>
+                        <button class="refresh-btn" onclick="loadData()" style="margin-top: 15px;">🔄 Try Again</button>
+                    </div>
+                `;
+            } else {
+                errorMessage = `
+                    <div class="error">
+                        <h3>❌ Error Loading Data</h3>
+                        <p>${error.message}</p>
+                        <button class="refresh-btn" onclick="loadData()" style="margin-top: 15px;">🔄 Try Again</button>
                     </div>
                 `;
             }
+
+            errorSection.innerHTML = errorMessage;
+            errorSection.style.display = 'block';
         }
 
-        function displayFolders(folders) {
-            const content = document.getElementById('content');
+        function createButtons() {
+            const buttonGrid = document.getElementById('buttonGrid');
+            buttonGrid.innerHTML = '';
             
-            const foldersHTML = folders.map(folder => `
-                <div class="folder-card" onclick="handleFolderClick('${folder}')">
-                    <div class="folder-icon">${getIcon(folder)}</div>
-                    <div class="folder-name">${folder.replace(/[-_]/g, ' ')}</div>
-                </div>
-            `).join('');
-
-            content.innerHTML = `
-                <button class="back-button" onclick="goBack()">
-                    ← Back
-                </button>
-                <div class="folders-grid">
-                    ${foldersHTML}
-                </div>
-            `;
-        }
-
-        async function handleFolderClick(folderName) {
-            // Check if this folder has subfolders
-            const testPath = [...currentPath, folderName];
-            const subFolders = await scanFolder(testPath);
-            
-            if (subFolders.length > 0) {
-                // Has subfolders, navigate into it
-                navigateToFolder(folderName);
-            } else {
-                // No subfolders, this is likely a final movie folder
-                const fullPath = '/' + testPath.join('/') + '/';
-                window.location.href = fullPath;
-            }
-        }
-
-        function updateBreadcrumb() {
-            const breadcrumb = document.getElementById('breadcrumb');
-            
-            const breadcrumbItems = [
-                `<span class="breadcrumb-item" onclick="navigateTo(0)">Home</span>`
-            ];
-            
-            currentPath.forEach((folder, index) => {
-                breadcrumbItems.push('<span class="breadcrumb-separator">→</span>');
-                
-                const isLast = index === currentPath.length - 1;
-                const className = isLast ? 'breadcrumb-item current' : 'breadcrumb-item';
-                const onclick = isLast ? '' : `onclick="navigateTo(${index + 1})"`;
-                
-                breadcrumbItems.push(`<span class="${className}" ${onclick}>${folder}</span>`);
+            Object.keys(jsonData).forEach(key => {
+                if (Array.isArray(jsonData[key])) {
+                    const button = document.createElement('button');
+                    button.className = 'data-button';
+                    
+                    const title = document.createElement('div');
+                    title.textContent = key.replace(/_/g, ' ').toUpperCase();
+                    
+                    const count = document.createElement('span');
+                    count.className = 'record-count';
+                    count.textContent = `${jsonData[key].length} records`;
+                    
+                    button.appendChild(title);
+                    button.appendChild(count);
+                    button.addEventListener('click', () => showData(key));
+                    buttonGrid.appendChild(button);
+                }
             });
-            
-            breadcrumb.innerHTML = breadcrumbItems.join('');
         }
 
-        function goBack() {
-            if (currentPath.length > 1) {
-                currentPath.pop();
-                loadCurrentLevel();
-            } else {
-                showMainScreen();
+        function showData(key) {
+            // Update active button
+            document.querySelectorAll('.data-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.closest('.data-button').classList.add('active');
+
+            currentDataKey = key;
+            const data = jsonData[key];
+            
+            if (!Array.isArray(data) || data.length === 0) {
+                showNoData(key);
+                return;
             }
+
+            // Update title and count
+            document.getElementById('dataTitle').textContent = key.replace(/_/g, ' ').toUpperCase();
+            document.getElementById('dataCount').textContent = `${data.length} records`;
+
+            // Show table
+            document.getElementById('noData').style.display = 'none';
+            document.getElementById('dataTable').style.display = 'table';
+
+            // Create table
+            createTable(data);
         }
 
-        function showMainScreen() {
-            currentPath = [];
-            const content = document.getElementById('content');
-            const breadcrumb = document.getElementById('breadcrumb');
-            const headerSubtitle = document.getElementById('headerSubtitle');
+        function createTable(data) {
+            const tableHead = document.getElementById('tableHead');
+            const tableBody = document.getElementById('tableBody');
             
-            breadcrumb.style.display = 'none';
-            headerSubtitle.textContent = 'Click to explore your movie collection';
-            
-            content.innerHTML = `
-                <div class="movies-main-button">
-                    <button class="main-movies-btn" onclick="exploreMovies()">
-                        🎬<br>Movies
-                    </button>
-                </div>
-            `;
+            // Clear previous content
+            tableHead.innerHTML = '';
+            tableBody.innerHTML = '';
+
+            if (data.length === 0) return;
+
+            // Get all unique keys from all objects
+            const allKeys = new Set();
+            data.forEach(item => {
+                if (typeof item === 'object' && item !== null) {
+                    Object.keys(item).forEach(key => allKeys.add(key));
+                }
+            });
+
+            const keys = Array.from(allKeys);
+
+            // Create header
+            const headerRow = document.createElement('tr');
+            keys.forEach(key => {
+                const th = document.createElement('th');
+                th.textContent = key.replace(/_/g, ' ').toUpperCase();
+                headerRow.appendChild(th);
+            });
+            tableHead.appendChild(headerRow);
+
+            // Create body rows
+            data.forEach((item, index) => {
+                const row = document.createElement('tr');
+                keys.forEach(key => {
+                    const td = document.createElement('td');
+                    let value = item[key];
+                    
+                    // Handle different data types
+                    if (value === null || value === undefined) {
+                        td.textContent = '-';
+                        td.style.color = '#999';
+                    } else if (typeof value === 'number') {
+                        // Format numbers nicely
+                        td.textContent = value.toLocaleString();
+                    } else if (typeof value === 'object') {
+                        td.textContent = JSON.stringify(value);
+                    } else {
+                        td.textContent = String(value);
+                    }
+                    
+                    row.appendChild(td);
+                });
+                tableBody.appendChild(row);
+            });
         }
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            showMainScreen();
-        });
+        function showNoData(key) {
+            document.getElementById('dataTitle').textContent = key.replace(/_/g, ' ').toUpperCase();
+            document.getElementById('dataCount').textContent = '0 records';
+            document.getElementById('noData').style.display = 'block';
+            document.getElementById('dataTable').style.display = 'none';
+        }
+
+        function resetDataDisplay() {
+            document.getElementById('dataTitle').textContent = 'Select a data table';
+            document.getElementById('dataCount').textContent = '0 records';
+            document.getElementById('noData').style.display = 'block';
+            document.getElementById('dataTable').style.display = 'none';
+            
+            // Remove active state from all buttons
+            document.querySelectorAll('.data-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+        }
     </script>
 </body>
 </html>
