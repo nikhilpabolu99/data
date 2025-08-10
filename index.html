@@ -964,7 +964,7 @@
         }
 
         async function saveTableAsImage() {
-            if (!currentDataKey) return;
+            if (!currentDataKey || !filteredData.length) return;
 
             const saveBtn = document.getElementById('saveImageBtn');
             const originalText = saveBtn.innerHTML;
@@ -974,31 +974,178 @@
                 saveBtn.innerHTML = '⏳ Generating...';
                 saveBtn.disabled = true;
 
-                // Get the table container element
-                const tableContainer = document.getElementById('tableContainer');
+                // Create a temporary container for the full table (off-screen)
+                const tempContainer = document.createElement('div');
+                tempContainer.style.position = 'absolute';
+                tempContainer.style.top = '-9999px';
+                tempContainer.style.left = '-9999px';
+                tempContainer.style.background = 'white';
+                tempContainer.style.padding = '20px';
+                tempContainer.style.fontFamily = 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
+                tempContainer.style.fontSize = '12px';
+                tempContainer.style.width = 'auto';
+                tempContainer.style.minWidth = '1200px';
+                tempContainer.style.maxWidth = 'none';
                 
-                // Configure html2canvas options
+                document.body.appendChild(tempContainer);
+
+                // Create header section
+                const headerDiv = document.createElement('div');
+                headerDiv.style.marginBottom = '20px';
+                headerDiv.style.borderBottom = '2px solid #e5e7eb';
+                headerDiv.style.paddingBottom = '15px';
+
+                // Title
+                const title = document.createElement('h1');
+                title.textContent = `${currentDataKey.replace(/_/g, ' ').toUpperCase()}`;
+                title.style.fontSize = '24px';
+                title.style.fontWeight = 'bold';
+                title.style.textAlign = 'center';
+                title.style.color = '#1f2937';
+                title.style.marginBottom = '10px';
+                headerDiv.appendChild(title);
+
+                // Record count and filter info
+                const infoDiv = document.createElement('div');
+                infoDiv.style.textAlign = 'center';
+                infoDiv.style.fontSize = '14px';
+                infoDiv.style.color = '#6b7280';
+                infoDiv.style.marginBottom = '10px';
+                
+                let infoText = `Total Records: ${filteredData.length}`;
+                if (filteredData.length !== originalData.length) {
+                    infoText += ` (filtered from ${originalData.length})`;
+                }
+                if (currentSort.column) {
+                    const sortDirection = currentSort.direction === 'asc' ? 'ascending' : 'descending';
+                    infoText += ` | Sorted by ${currentSort.column.replace(/_/g, ' ')} (${sortDirection})`;
+                }
+                
+                infoDiv.textContent = infoText;
+                headerDiv.appendChild(infoDiv);
+
+                // Generation timestamp
+                const timestamp = document.createElement('div');
+                timestamp.style.textAlign = 'center';
+                timestamp.style.fontSize = '11px';
+                timestamp.style.color = '#9ca3af';
+                timestamp.textContent = `Generated on ${new Date().toLocaleString()}`;
+                headerDiv.appendChild(timestamp);
+
+                tempContainer.appendChild(headerDiv);
+
+                // Get all unique keys from filtered data
+                const allKeys = new Set();
+                filteredData.forEach(item => {
+                    if (typeof item === 'object' && item !== null) {
+                        Object.keys(item).forEach(key => allKeys.add(key));
+                    }
+                });
+                const keys = Array.from(allKeys);
+
+                // Create full table with ALL filtered data
+                const table = document.createElement('table');
+                table.style.borderCollapse = 'collapse';
+                table.style.width = '100%';
+                table.style.backgroundColor = 'white';
+                table.style.border = '1px solid #d1d5db';
+                table.style.borderRadius = '8px';
+                table.style.overflow = 'hidden';
+
+                // Create header
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                headerRow.style.backgroundColor = '#f9fafb';
+                headerRow.style.borderBottom = '2px solid #e5e7eb';
+                
+                keys.forEach(key => {
+                    const th = document.createElement('th');
+                    th.textContent = key.replace(/_/g, ' ').toUpperCase();
+                    th.style.border = '1px solid #e5e7eb';
+                    th.style.padding = '12px 8px';
+                    th.style.textAlign = 'left';
+                    th.style.fontWeight = '700';
+                    th.style.fontSize = '10px';
+                    th.style.color = '#374151';
+                    th.style.whiteSpace = 'nowrap';
+                    th.style.backgroundColor = '#f9fafb';
+                    headerRow.appendChild(th);
+                });
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+
+                // Create body with ALL filtered data (not paginated)
+                const tbody = document.createElement('tbody');
+                filteredData.forEach((item, index) => {
+                    const tr = document.createElement('tr');
+                    tr.style.backgroundColor = index % 2 === 0 ? 'white' : '#f9fafb';
+                    tr.style.borderBottom = '1px solid #f3f4f6';
+                    
+                    keys.forEach(key => {
+                        const td = document.createElement('td');
+                        let value = item[key];
+                        
+                        // Format the value
+                        if (value === null || value === undefined) {
+                            td.textContent = '-';
+                            td.style.color = '#9ca3af';
+                        } else if (typeof value === 'number') {
+                            td.textContent = value.toLocaleString();
+                        } else if (typeof value === 'object') {
+                            td.textContent = JSON.stringify(value);
+                        } else {
+                            td.textContent = String(value);
+                        }
+                        
+                        td.style.border = '1px solid #f3f4f6';
+                        td.style.padding = '8px 6px';
+                        td.style.fontSize = '9px';
+                        td.style.whiteSpace = 'nowrap';
+                        
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody);
+                tempContainer.appendChild(table);
+
+                // Wait for rendering
+                await new Promise(resolve => setTimeout(resolve, 200));
+
+                // Configure html2canvas options for full table capture
                 const options = {
                     backgroundColor: '#ffffff',
-                    scale: 2, // Higher quality
+                    scale: 1.5, // Good quality without being too large
                     logging: false,
                     useCORS: true,
                     allowTaint: true,
-                    width: tableContainer.scrollWidth,
-                    height: tableContainer.scrollHeight,
+                    foreignObjectRendering: true,
                     scrollX: 0,
-                    scrollY: 0
+                    scrollY: 0,
+                    width: tempContainer.scrollWidth,
+                    height: tempContainer.scrollHeight,
+                    onclone: (clonedDoc) => {
+                        // Ensure all styles are preserved in the cloned document
+                        const clonedContainer = clonedDoc.querySelector('div');
+                        if (clonedContainer) {
+                            clonedContainer.style.fontFamily = 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
+                        }
+                    }
                 };
 
-                // Generate canvas from the table container
-                const canvas = await html2canvas(tableContainer, options);
+                // Generate canvas from the complete table
+                const canvas = await html2canvas(tempContainer, options);
                 
-                // Create download link
+                // Clean up temporary container
+                document.body.removeChild(tempContainer);
+                
+                // Create and trigger download
                 const link = document.createElement('a');
-                link.download = `${currentDataKey.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_table.png`;
-                link.href = canvas.toDataURL('image/png');
+                const timestamp_str = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+                const filename = `${currentDataKey.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_full_table_${timestamp_str}.png`;
                 
-                // Trigger download
+                link.download = filename;
+                link.href = canvas.toDataURL('image/png');
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
