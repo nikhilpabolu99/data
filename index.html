@@ -402,69 +402,85 @@
             box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
         }
 
-        /* Export container - positioned for proper rendering */
+        /* Improved export container for full table capture */
         .export-container {
             position: fixed;
-            top: -10000px;
-            left: -10000px;
+            top: -20000px;
+            left: -20000px;
             background: white;
-            padding: 20px;
-            max-width: none;
-            width: auto;
-            height: auto;
+            padding: 30px;
             z-index: -1;
             visibility: hidden;
             border-radius: 0;
             box-shadow: none;
+            font-family: Arial, sans-serif;
+            max-width: none;
+            width: auto;
+            height: auto;
+            overflow: visible;
         }
 
-        .export-container.visible {
+        .export-container.capturing {
             position: fixed;
-            top: 20px;
-            left: 20px;
+            top: 50px;
+            left: 50px;
             z-index: 10000;
             visibility: visible;
             background: white;
-            border: 1px solid #ddd;
-            max-height: 90vh;
-            max-width: 90vw;
-            overflow: auto;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-height: none;
+            max-width: none;
+            overflow: visible;
         }
 
         .export-container table {
             width: auto;
             min-width: auto;
-            font-size: 11px;
+            font-size: 10px;
             background: white;
+            border-collapse: collapse;
+            margin: 0;
         }
 
         .export-container th,
         .export-container td {
-            padding: 6px 8px;
-            border: 1px solid #ddd;
+            padding: 4px 6px;
+            border: 1px solid #ccc;
             white-space: nowrap;
             background: white;
-            font-size: 11px;
+            font-size: 10px;
+            text-align: left;
+            vertical-align: top;
         }
 
         .export-container th {
-            background: #f8f9fa;
+            background: #f0f0f0;
             font-weight: bold;
+            font-size: 10px;
+        }
+
+        .export-container tr:nth-child(even) td {
+            background: #f9f9f9;
         }
 
         .export-header {
             text-align: center;
-            margin-bottom: 15px;
-            font-size: 16px;
+            margin-bottom: 20px;
+            font-size: 18px;
             font-weight: bold;
             color: #333;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #4facfe;
         }
 
         .export-stats {
             text-align: center;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             font-size: 11px;
             color: #666;
+            line-height: 1.4;
         }
 
         /* Watermark for export */
@@ -473,9 +489,9 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 24px;
+            font-size: 48px;
             font-weight: bold;
-            color: rgba(0, 0, 0, 0.05);
+            color: rgba(0, 0, 0, 0.03);
             pointer-events: none;
             z-index: 1;
             white-space: nowrap;
@@ -522,11 +538,47 @@
                 max-height: 400px;
             }
         }
+
+        /* Loading overlay for export */
+        .export-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            font-size: 1.2em;
+        }
+
+        .export-overlay.show {
+            display: flex;
+        }
+
+        .export-progress {
+            text-align: center;
+        }
+
+        .export-progress .spinner {
+            margin-bottom: 20px;
+        }
     </style>
     <!-- Include html2canvas library for image export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
+    <div class="export-overlay" id="exportOverlay">
+        <div class="export-progress">
+            <div class="loading-spinner spinner"></div>
+            <div>Generating image export...</div>
+            <div style="font-size: 0.9em; margin-top: 10px; opacity: 0.8;">Please wait, this may take a moment for large tables</div>
+        </div>
+    </div>
+
     <div class="container">
         <div class="header">
             <h1>📊 Data Dashboard</h1>
@@ -1051,7 +1103,7 @@
             }
         }
 
-        // Fixed image export functionality
+        // Enhanced image export functionality with full table capture
         async function saveTableAsImage() {
             if (!currentDataKey || filteredData.length === 0) {
                 alert('No data to export!');
@@ -1059,12 +1111,14 @@
             }
 
             const saveBtn = document.getElementById('saveImageBtn');
+            const exportOverlay = document.getElementById('exportOverlay');
             const originalText = saveBtn.innerHTML;
             
             try {
-                // Disable button and show loading
+                // Show loading overlay
+                exportOverlay.classList.add('show');
                 saveBtn.disabled = true;
-                saveBtn.innerHTML = '⏳ Generating...';
+                saveBtn.innerHTML = '⏳ Processing...';
 
                 // Check if html2canvas is available
                 if (typeof html2canvas === 'undefined') {
@@ -1073,38 +1127,73 @@
                     return;
                 }
 
-                // Create export table
-                createExportTable();
+                // Create export table with optimized layout
+                await createOptimizedExportTable();
                 
                 const exportContainer = document.getElementById('exportContainer');
                 
-                // Make container visible for rendering
-                exportContainer.classList.add('visible');
+                // Make container visible for measurement
+                exportContainer.classList.add('capturing');
                 
-                // Wait for DOM to update
-                await new Promise(resolve => setTimeout(resolve, 100));
+                // Wait for layout to settle
+                await new Promise(resolve => setTimeout(resolve, 300));
                 
-                // Get the actual rendered size
-                const rect = exportContainer.getBoundingClientRect();
-                console.log('Export container size:', rect.width, 'x', rect.height);
+                // Measure the actual content size
+                const table = exportContainer.querySelector('table');
+                const header = exportContainer.querySelector('.export-header');
+                const stats = exportContainer.querySelector('.export-stats');
+                
+                // Calculate optimal dimensions
+                const tableRect = table.getBoundingClientRect();
+                const headerRect = header.getBoundingClientRect();
+                const statsRect = stats.getBoundingClientRect();
+                
+                const padding = 60; // 30px padding on each side
+                const totalWidth = Math.max(tableRect.width + padding, 800);
+                const totalHeight = headerRect.height + statsRect.height + tableRect.height + padding + 40; // extra spacing
+                
+                console.log('Export dimensions:', totalWidth, 'x', totalHeight);
+                console.log('Table size:', tableRect.width, 'x', tableRect.height);
+                console.log('Rows:', filteredData.length);
 
-                // Generate image
+                // Set container size explicitly
+                exportContainer.style.width = totalWidth + 'px';
+                exportContainer.style.height = totalHeight + 'px';
+                
+                // Wait for size adjustment
+                await new Promise(resolve => setTimeout(resolve, 200));
+
+                // Generate image with optimized settings
                 const canvas = await html2canvas(exportContainer, {
-                    scale: 2, // Higher resolution
+                    scale: 1.5, // Good balance between quality and performance
                     backgroundColor: '#ffffff',
                     useCORS: true,
                     allowTaint: false,
                     logging: false,
-                    width: rect.width,
-                    height: rect.height,
-                    windowWidth: window.innerWidth,
-                    windowHeight: window.innerHeight,
+                    width: totalWidth,
+                    height: totalHeight,
                     scrollX: 0,
-                    scrollY: 0
+                    scrollY: 0,
+                    windowWidth: totalWidth + 200,
+                    windowHeight: totalHeight + 200,
+                    onclone: function(clonedDoc) {
+                        // Ensure styles are applied in the cloned document
+                        const clonedContainer = clonedDoc.getElementById('exportContainer');
+                        if (clonedContainer) {
+                            clonedContainer.style.position = 'static';
+                            clonedContainer.style.visibility = 'visible';
+                            clonedContainer.style.width = totalWidth + 'px';
+                            clonedContainer.style.height = totalHeight + 'px';
+                        }
+                    }
                 });
 
                 // Hide container
-                exportContainer.classList.remove('visible');
+                exportContainer.classList.remove('capturing');
+                exportContainer.style.width = '';
+                exportContainer.style.height = '';
+
+                console.log('Canvas size:', canvas.width, 'x', canvas.height);
 
                 // Download the image
                 canvas.toBlob(function(blob) {
@@ -1119,27 +1208,150 @@
                         URL.revokeObjectURL(url);
                         
                         console.log('Image exported successfully!');
+                        
+                        // Show success message
+                        const tempMsg = document.createElement('div');
+                        tempMsg.style.cssText = `
+                            position: fixed;
+                            top: 20px;
+                            right: 20px;
+                            background: #27ae60;
+                            color: white;
+                            padding: 15px 20px;
+                            border-radius: 10px;
+                            z-index: 10001;
+                            font-size: 14px;
+                            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                        `;
+                        tempMsg.textContent = '✅ Image exported successfully!';
+                        document.body.appendChild(tempMsg);
+                        setTimeout(() => {
+                            document.body.removeChild(tempMsg);
+                        }, 3000);
+                        
                     } else {
                         throw new Error('Failed to create image blob');
                     }
-                }, 'image/png', 1.0);
+                }, 'image/png', 0.95);
 
             } catch (error) {
                 console.error('Error generating image:', error);
-                alert('Error generating image. Trying alternative method...');
+                
+                // Show error message
+                const tempMsg = document.createElement('div');
+                tempMsg.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #e74c3c;
+                    color: white;
+                    padding: 15px 20px;
+                    border-radius: 10px;
+                    z-index: 10001;
+                    font-size: 14px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                `;
+                tempMsg.textContent = '❌ Image export failed. Try CSV export instead.';
+                document.body.appendChild(tempMsg);
+                setTimeout(() => {
+                    document.body.removeChild(tempMsg);
+                }, 5000);
                 
                 try {
+                    // Fallback to alternative method
                     await saveTableAsImageAlternative();
                 } catch (altError) {
                     console.error('Alternative method failed:', altError);
-                    alert('Image export failed. Please try the CSV export instead.');
-                    downloadTableAsCSV();
                 }
             } finally {
-                // Re-enable button and hide container
+                // Re-enable button and hide overlay
+                exportOverlay.classList.remove('show');
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = originalText;
-                document.getElementById('exportContainer').classList.remove('visible');
+                
+                // Ensure container is hidden
+                const exportContainer = document.getElementById('exportContainer');
+                exportContainer.classList.remove('capturing');
+                exportContainer.style.width = '';
+                exportContainer.style.height = '';
+            }
+        }
+
+        // Create optimized export table for better image capture
+        async function createOptimizedExportTable() {
+            const exportHeader = document.getElementById('exportHeader');
+            const exportStats = document.getElementById('exportStats');
+            const exportTable = document.getElementById('exportTable');
+
+            // Set header
+            exportHeader.textContent = `${currentDataKey.replace(/_/g, ' ').toUpperCase()} - Data Export`;
+            
+            // Set stats
+            const now = new Date();
+            exportStats.innerHTML = `
+                Generated: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}<br>
+                Records: ${filteredData.length} ${filteredData.length !== originalData.length ? `(filtered from ${originalData.length})` : ''}
+                ${currentSort.column ? `<br>Sorted by: ${currentSort.column.replace(/_/g, ' ')} (${currentSort.direction})` : ''}
+            `;
+
+            // Clear existing table
+            exportTable.innerHTML = '';
+
+            if (filteredData.length === 0) {
+                exportTable.innerHTML = '<tr><td style="text-align: center; padding: 20px;">No data to export</td></tr>';
+                return;
+            }
+
+            // Get all unique keys
+            const allKeys = new Set();
+            filteredData.forEach(item => {
+                if (typeof item === 'object' && item !== null) {
+                    Object.keys(item).forEach(key => allKeys.add(key));
+                }
+            });
+
+            const keys = Array.from(allKeys);
+
+            // Create header
+            const headerRow = document.createElement('tr');
+            keys.forEach(key => {
+                const th = document.createElement('th');
+                th.textContent = key.replace(/_/g, ' ').toUpperCase();
+                headerRow.appendChild(th);
+            });
+            exportTable.appendChild(headerRow);
+
+            // Create body rows with chunking for better performance
+            const chunkSize = 50;
+            for (let i = 0; i < filteredData.length; i += chunkSize) {
+                const chunk = filteredData.slice(i, i + chunkSize);
+                
+                chunk.forEach(item => {
+                    const row = document.createElement('tr');
+                    keys.forEach(key => {
+                        const td = document.createElement('td');
+                        let value = item[key];
+                        
+                        // Handle different data types
+                        if (value === null || value === undefined) {
+                            td.textContent = '-';
+                        } else if (typeof value === 'number') {
+                            td.textContent = value.toLocaleString();
+                        } else if (typeof value === 'object') {
+                            td.textContent = JSON.stringify(value);
+                        } else {
+                            td.textContent = String(value);
+                        }
+                        
+                        row.appendChild(td);
+                    });
+                    exportTable.appendChild(row);
+                });
+                
+                // Allow browser to update DOM
+                if (i + chunkSize < filteredData.length) {
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
             }
         }
 
@@ -1148,7 +1360,7 @@
             if (!filteredData.length) return;
 
             // Create a new window with printable content
-            const printWindow = window.open('', '_blank', 'width=1000,height=700');
+            const printWindow = window.open('', '_blank', 'width=1200,height=800');
             if (!printWindow) {
                 alert('Please allow popups and try again, or use CSV export instead.');
                 return;
@@ -1167,6 +1379,7 @@
                             margin: 20px; 
                             position: relative;
                             background: white;
+                            font-size: 11px;
                         }
                         body::before { 
                             content: '@CineNationBO'; 
@@ -1174,8 +1387,8 @@
                             top: 50%; 
                             left: 50%; 
                             transform: translate(-50%, -50%) rotate(-45deg); 
-                            font-size: 36px; 
-                            color: rgba(0, 0, 0, 0.05); 
+                            font-size: 48px; 
+                            color: rgba(0, 0, 0, 0.03); 
                             font-weight: bold; 
                             pointer-events: none; 
                             z-index: -1;
@@ -1188,36 +1401,55 @@
                             position: relative; 
                             z-index: 1; 
                             background: white;
+                            page-break-inside: auto;
+                        }
+                        tr { 
+                            page-break-inside: avoid; 
+                            page-break-after: auto; 
                         }
                         th, td { 
-                            border: 1px solid #ddd; 
-                            padding: 8px; 
+                            border: 1px solid #ccc; 
+                            padding: 4px 6px; 
                             text-align: left; 
                             background: white;
-                            font-size: 12px;
+                            font-size: 10px;
+                            word-wrap: break-word;
+                            max-width: 150px;
                         }
                         th { 
-                            background-color: #f2f2f2; 
+                            background-color: #f0f0f0; 
                             font-weight: bold; 
+                            page-break-after: avoid;
                         }
                         .header { 
                             text-align: center; 
                             margin-bottom: 20px; 
                             position: relative; 
                             z-index: 1; 
+                            page-break-after: avoid;
                         }
                         .stats { 
                             text-align: center; 
                             color: #666; 
-                            font-size: 12px; 
+                            font-size: 11px; 
                             margin-bottom: 15px; 
                             position: relative; 
                             z-index: 1; 
+                            page-break-after: avoid;
                         }
-                        .no-print { margin-bottom: 20px; }
+                        .no-print { 
+                            margin-bottom: 20px; 
+                            page-break-after: avoid;
+                        }
                         @media print { 
                             .no-print { display: none; }
-                            body { margin: 0; }
+                            body { margin: 0; font-size: 10px; }
+                            table { font-size: 9px; }
+                            th, td { padding: 3px 4px; font-size: 9px; }
+                        }
+                        @page {
+                            margin: 0.5in;
+                            size: landscape;
                         }
                     </style>
                 </head>
@@ -1225,7 +1457,8 @@
                     <div class="no-print">
                         <button onclick="window.print()" style="padding: 10px 20px; margin-right: 10px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;">🖨️ Print / Save as PDF</button>
                         <button onclick="window.close()" style="padding: 10px 20px; background: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer;">❌ Close</button>
-                        <p style="margin-top: 10px; font-size: 14px; color: #666;"><em>Use Ctrl+P or Cmd+P to print, then choose "Save as PDF" to save as image</em></p>
+                        <p style="margin-top: 10px; font-size: 12px; color: #666;"><em>Use Ctrl+P or Cmd+P to print, then choose "Save as PDF" to save as image</em></p>
+                        <p style="margin-top: 5px; font-size: 12px; color: #666;"><em>For landscape orientation: Go to Print → More settings → Layout → Landscape</em></p>
                     </div>
                     ${printContent}
                 </body>
@@ -1297,74 +1530,6 @@
             return html;
         }
 
-        // Create export table for html2canvas
-        function createExportTable() {
-            const exportHeader = document.getElementById('exportHeader');
-            const exportStats = document.getElementById('exportStats');
-            const exportTable = document.getElementById('exportTable');
-
-            // Set header
-            exportHeader.textContent = `${currentDataKey.replace(/_/g, ' ').toUpperCase()} - Data Export`;
-            
-            // Set stats
-            const now = new Date();
-            exportStats.innerHTML = `
-                Generated: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}<br>
-                Records: ${filteredData.length} ${filteredData.length !== originalData.length ? `(filtered from ${originalData.length})` : ''}
-                ${currentSort.column ? `<br>Sorted by: ${currentSort.column.replace(/_/g, ' ')} (${currentSort.direction})` : ''}
-            `;
-
-            // Clear existing table
-            exportTable.innerHTML = '';
-
-            if (filteredData.length === 0) {
-                exportTable.innerHTML = '<tr><td>No data to export</td></tr>';
-                return;
-            }
-
-            // Get all unique keys
-            const allKeys = new Set();
-            filteredData.forEach(item => {
-                if (typeof item === 'object' && item !== null) {
-                    Object.keys(item).forEach(key => allKeys.add(key));
-                }
-            });
-
-            const keys = Array.from(allKeys);
-
-            // Create header
-            const headerRow = document.createElement('tr');
-            keys.forEach(key => {
-                const th = document.createElement('th');
-                th.textContent = key.replace(/_/g, ' ').toUpperCase();
-                headerRow.appendChild(th);
-            });
-            exportTable.appendChild(headerRow);
-
-            // Create body rows
-            filteredData.forEach(item => {
-                const row = document.createElement('tr');
-                keys.forEach(key => {
-                    const td = document.createElement('td');
-                    let value = item[key];
-                    
-                    // Handle different data types
-                    if (value === null || value === undefined) {
-                        td.textContent = '-';
-                    } else if (typeof value === 'number') {
-                        td.textContent = value.toLocaleString();
-                    } else if (typeof value === 'object') {
-                        td.textContent = JSON.stringify(value);
-                    } else {
-                        td.textContent = String(value);
-                    }
-                    
-                    row.appendChild(td);
-                });
-                exportTable.appendChild(row);
-            });
-        }
-
         // CSV export functionality
         function downloadTableAsCSV() {
             if (!filteredData.length) {
@@ -1413,6 +1578,26 @@
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
+            
+            // Show success message
+            const tempMsg = document.createElement('div');
+            tempMsg.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #3498db;
+                color: white;
+                padding: 15px 20px;
+                border-radius: 10px;
+                z-index: 10001;
+                font-size: 14px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            `;
+            tempMsg.textContent = '✅ CSV exported successfully!';
+            document.body.appendChild(tempMsg);
+            setTimeout(() => {
+                document.body.removeChild(tempMsg);
+            }, 3000);
         }
     </script>
 </body>
