@@ -518,9 +518,14 @@
                 <h3 class="data-title" id="dataTitle">Select a data table</h3>
                 <div class="data-actions">
                     <span class="data-count" id="dataCount">0 records</span>
-                    <button class="save-image-btn" id="saveImageBtn" onclick="saveTableAsImage()" style="display: none;">
-                        📷 Save as Image
-                    </button>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="save-image-btn" id="saveImageBtn" onclick="saveTableAsImage()" style="display: none;">
+                            📷 Save as Image
+                        </button>
+                        <button class="save-image-btn" id="saveCSVBtn" onclick="downloadTableAsCSV()" style="display: none; background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);">
+                            📊 Export CSV
+                        </button>
+                    </div>
                 </div>
             </div>
             
@@ -719,6 +724,7 @@
         function resetDataDisplay() {
             document.getElementById('filterSection').classList.remove('show');
             document.getElementById('saveImageBtn').style.display = 'none';
+            document.getElementById('saveCSVBtn').style.display = 'none';
             document.getElementById('tableStats').style.display = 'none';
             document.getElementById('noData').style.display = 'block';
             document.getElementById('dataTable').style.display = 'none';
@@ -748,9 +754,10 @@
             document.getElementById('dataTitle').textContent = key.replace(/_/g, ' ').toUpperCase();
             document.getElementById('dataCount').textContent = `${data.length} records`;
 
-            // Show filter section and save image button
+            // Show filter section and export buttons
             document.getElementById('filterSection').classList.add('show');
             document.getElementById('saveImageBtn').style.display = 'flex';
+            document.getElementById('saveCSVBtn').style.display = 'flex';
             document.getElementById('tableStats').style.display = 'flex';
 
             // Setup column filter options
@@ -770,6 +777,7 @@
             document.getElementById('dataCount').textContent = '0 records';
             document.getElementById('filterSection').classList.remove('show');
             document.getElementById('saveImageBtn').style.display = 'none';
+            document.getElementById('saveCSVBtn').style.display = 'none';
             document.getElementById('tableStats').style.display = 'none';
             
             const noData = document.getElementById('noData');
@@ -993,7 +1001,7 @@
             }
         }
 
-        // Image export functionality
+        // Image export functionality with fallback methods
         async function saveTableAsImage() {
             if (!currentDataKey || filteredData.length === 0) {
                 alert('No data to export!');
@@ -1008,6 +1016,13 @@
                 saveBtn.disabled = true;
                 saveBtn.innerHTML = '⏳ Generating...';
 
+                // Check if html2canvas is available
+                if (typeof html2canvas === 'undefined') {
+                    console.warn('html2canvas not loaded, trying alternative method...');
+                    await saveTableAsImageAlternative();
+                    return;
+                }
+
                 // Create export table
                 await createExportTable();
 
@@ -1016,51 +1031,237 @@
                 
                 // Temporarily show the export container
                 exportContainer.style.position = 'fixed';
-                exportContainer.style.top = '50%';
-                exportContainer.style.left = '50%';
-                exportContainer.style.transform = 'translate(-50%, -50%)';
-                exportContainer.style.zIndex = '9999';
-                exportContainer.style.maxWidth = '90vw';
-                exportContainer.style.maxHeight = '90vh';
-                exportContainer.style.overflow = 'auto';
+                exportContainer.style.top = '0';
+                exportContainer.style.left = '0';
+                exportContainer.style.zIndex = '10000';
+                exportContainer.style.backgroundColor = 'white';
+                exportContainer.style.padding = '20px';
+                exportContainer.style.maxWidth = 'none';
+                exportContainer.style.width = 'auto';
+                exportContainer.style.height = 'auto';
 
-                // Wait a moment for rendering
-                await new Promise(resolve => setTimeout(resolve, 100));
+                // Wait for rendering
+                await new Promise(resolve => setTimeout(resolve, 300));
 
+                // Generate image
                 const canvas = await html2canvas(exportContainer, {
-                    scale: 2,
+                    scale: 1.5,
                     backgroundColor: '#ffffff',
                     useCORS: true,
-                    logging: false,
-                    width: exportContainer.scrollWidth,
-                    height: exportContainer.scrollHeight
+                    allowTaint: true,
+                    logging: true,
+                    windowWidth: exportContainer.scrollWidth,
+                    windowHeight: exportContainer.scrollHeight,
+                    onclone: function(clonedDoc) {
+                        // Ensure styles are applied in cloned document
+                        const clonedContainer = clonedDoc.getElementById('exportContainer');
+                        if (clonedContainer) {
+                            clonedContainer.style.position = 'static';
+                            clonedContainer.style.visibility = 'visible';
+                        }
+                    }
                 });
 
                 // Hide the export container again
                 exportContainer.style.position = 'absolute';
                 exportContainer.style.top = '-9999px';
                 exportContainer.style.left = '-9999px';
-                exportContainer.style.transform = 'none';
                 exportContainer.style.zIndex = '-1';
 
-                // Create download link
-                const link = document.createElement('a');
-                link.download = `${currentDataKey}_data_export_${new Date().toISOString().split('T')[0]}.png`;
-                link.href = canvas.toDataURL('image/png');
-                
-                // Trigger download
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                // Convert canvas to blob and download
+                canvas.toBlob(function(blob) {
+                    if (blob) {
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.download = `${currentDataKey}_data_export_${new Date().toISOString().split('T')[0]}.png`;
+                        link.href = url;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(url);
+                    } else {
+                        throw new Error('Failed to create image blob');
+                    }
+                }, 'image/png', 0.95);
 
             } catch (error) {
                 console.error('Error generating image:', error);
-                alert('Error generating image. Please try again.');
+                // Try alternative method
+                try {
+                    await saveTableAsImageAlternative();
+                } catch (altError) {
+                    console.error('Alternative method also failed:', altError);
+                    alert('Error generating image. Your browser may not support this feature. Try using Chrome or Firefox.');
+                }
             } finally {
                 // Re-enable button
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = originalText;
+                
+                // Ensure export container is hidden
+                const exportContainer = document.getElementById('exportContainer');
+                exportContainer.style.position = 'absolute';
+                exportContainer.style.top = '-9999px';
+                exportContainer.style.left = '-9999px';
+                exportContainer.style.zIndex = '-1';
             }
+        }
+
+        // Alternative method using canvas drawing
+        async function saveTableAsImageAlternative() {
+            if (!filteredData.length) return;
+
+            // Create a new window with printable content
+            const printWindow = window.open('', '_blank', 'width=800,height=600');
+            if (!printWindow) {
+                // If popup blocked, use different method
+                downloadTableAsCSV();
+                return;
+            }
+
+            const printContent = createPrintableHTML();
+            
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>${currentDataKey} - Data Export</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                        th { background-color: #f2f2f2; font-weight: bold; }
+                        .header { text-align: center; margin-bottom: 20px; }
+                        .stats { text-align: center; color: #666; font-size: 14px; margin-bottom: 15px; }
+                        @media print { .no-print { display: none; } }
+                    </style>
+                </head>
+                <body>
+                    <div class="no-print" style="margin-bottom: 20px;">
+                        <button onclick="window.print()">🖨️ Print</button>
+                        <button onclick="window.close()">❌ Close</button>
+                        <p><em>Right-click and "Save as PDF" or use your browser's print-to-PDF feature</em></p>
+                    </div>
+                    ${printContent}
+                </body>
+                </html>
+            `);
+            
+            printWindow.document.close();
+            printWindow.focus();
+        }
+
+        // Create printable HTML content
+        function createPrintableHTML() {
+            const now = new Date();
+            let html = `
+                <div class="header">
+                    <h1>${currentDataKey.replace(/_/g, ' ').toUpperCase()} - Data Export</h1>
+                </div>
+                <div class="stats">
+                    Generated: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}<br>
+                    Records: ${filteredData.length} ${filteredData.length !== originalData.length ? `(filtered from ${originalData.length})` : ''}
+                    ${currentSort.column ? `<br>Sorted by: ${currentSort.column.replace(/_/g, ' ')} (${currentSort.direction})` : ''}
+                </div>
+                <table>
+            `;
+
+            if (filteredData.length === 0) {
+                html += '<tr><td>No data to export</td></tr>';
+            } else {
+                // Get all unique keys
+                const allKeys = new Set();
+                filteredData.forEach(item => {
+                    if (typeof item === 'object' && item !== null) {
+                        Object.keys(item).forEach(key => allKeys.add(key));
+                    }
+                });
+
+                const keys = Array.from(allKeys);
+
+                // Create header
+                html += '<tr>';
+                keys.forEach(key => {
+                    html += `<th>${key.replace(/_/g, ' ').toUpperCase()}</th>`;
+                });
+                html += '</tr>';
+
+                // Create body rows
+                filteredData.forEach(item => {
+                    html += '<tr>';
+                    keys.forEach(key => {
+                        let value = item[key];
+                        
+                        if (value === null || value === undefined) {
+                            value = '-';
+                        } else if (typeof value === 'number') {
+                            value = value.toLocaleString();
+                        } else if (typeof value === 'object') {
+                            value = JSON.stringify(value);
+                        } else {
+                            value = String(value);
+                        }
+                        
+                        html += `<td>${value}</td>`;
+                    });
+                    html += '</tr>';
+                });
+            }
+
+            html += '</table>';
+            return html;
+        }
+
+        // CSV export as final fallback
+        function downloadTableAsCSV() {
+            if (!filteredData.length) {
+                alert('No data to export!');
+                return;
+            }
+
+            // Get all unique keys
+            const allKeys = new Set();
+            filteredData.forEach(item => {
+                if (typeof item === 'object' && item !== null) {
+                    Object.keys(item).forEach(key => allKeys.add(key));
+                }
+            });
+
+            const keys = Array.from(allKeys);
+            
+            // Create CSV content
+            let csvContent = '';
+            
+            // Add header
+            csvContent += keys.map(key => `"${key.replace(/_/g, ' ').toUpperCase()}"`).join(',') + '\n';
+            
+            // Add data rows
+            filteredData.forEach(item => {
+                const row = keys.map(key => {
+                    let value = item[key];
+                    if (value === null || value === undefined) {
+                        return '""';
+                    }
+                    if (typeof value === 'object') {
+                        value = JSON.stringify(value);
+                    }
+                    return `"${String(value).replace(/"/g, '""')}"`;
+                });
+                csvContent += row.join(',') + '\n';
+            });
+
+            // Download CSV
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `${currentDataKey}_data_export_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            alert('Data exported as CSV file since image export failed.');
         }
 
         async function createExportTable() {
