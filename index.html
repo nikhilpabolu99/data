@@ -321,6 +321,13 @@
             transform: translateY(0px);
         }
 
+        .save-image-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
         .table-container {
             overflow-x: auto;
             background: white;
@@ -395,6 +402,37 @@
             box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
         }
 
+        /* Export styles - optimized for image export */
+        .export-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            position: absolute;
+            top: -9999px;
+            left: -9999px;
+            max-width: none;
+            width: auto;
+            z-index: -1;
+        }
+
+        .export-container table {
+            min-width: auto;
+            width: 100%;
+            font-size: 12px;
+        }
+
+        .export-container th,
+        .export-container td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            white-space: nowrap;
+        }
+
+        .export-container th {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+
         @media (max-width: 768px) {
             .container {
                 margin: 10px;
@@ -434,13 +472,6 @@
             .table-container {
                 max-height: 400px;
             }
-        }
-
-        /* Canvas for image export */
-        #tempCanvas {
-            position: absolute;
-            top: -9999px;
-            left: -9999px;
         }
     </style>
     <!-- Include html2canvas library for image export -->
@@ -526,8 +557,12 @@
         </div>
     </div>
 
-    <!-- Temporary canvas for image export -->
-    <canvas id="tempCanvas"></canvas>
+    <!-- Hidden container for export -->
+    <div id="exportContainer" class="export-container">
+        <div id="exportHeader" style="text-align: center; margin-bottom: 15px; font-size: 18px; font-weight: bold;"></div>
+        <div id="exportStats" style="text-align: center; margin-bottom: 15px; font-size: 12px; color: #666;"></div>
+        <table id="exportTable"></table>
+    </div>
 
     <script>
         let jsonData = {};
@@ -681,6 +716,14 @@
             });
         }
 
+        function resetDataDisplay() {
+            document.getElementById('filterSection').classList.remove('show');
+            document.getElementById('saveImageBtn').style.display = 'none';
+            document.getElementById('tableStats').style.display = 'none';
+            document.getElementById('noData').style.display = 'block';
+            document.getElementById('dataTable').style.display = 'none';
+        }
+
         function showData(key) {
             // Update active button
             document.querySelectorAll('.data-button').forEach(btn => {
@@ -720,6 +763,20 @@
             // Create table
             createTable(filteredData);
             updateTableStats();
+        }
+
+        function showNoData(key) {
+            document.getElementById('dataTitle').textContent = key.replace(/_/g, ' ').toUpperCase();
+            document.getElementById('dataCount').textContent = '0 records';
+            document.getElementById('filterSection').classList.remove('show');
+            document.getElementById('saveImageBtn').style.display = 'none';
+            document.getElementById('tableStats').style.display = 'none';
+            
+            const noData = document.getElementById('noData');
+            noData.style.display = 'block';
+            noData.textContent = 'No data available for this table';
+            
+            document.getElementById('dataTable').style.display = 'none';
         }
 
         function createTable(data) {
@@ -919,252 +976,159 @@
         }
 
         function updateTableStats() {
-            const filteredCount = document.getElementById('filteredCount');
-            const sortInfo = document.getElementById('sortInfo');
+            const filteredCountElement = document.getElementById('filteredCount');
+            const sortInfoElement = document.getElementById('sortInfo');
             
-            filteredCount.textContent = `${filteredData.length} of ${originalData.length} records shown`;
+            if (filteredCountElement) {
+                filteredCountElement.textContent = `${filteredData.length} records shown`;
+            }
             
-            if (currentSort.column) {
-                const columnName = currentSort.column.replace(/_/g, ' ').toUpperCase();
-                const direction = currentSort.direction === 'asc' ? 'ascending' : 'descending';
-                sortInfo.textContent = `Sorted by ${columnName} (${direction})`;
-            } else {
-                sortInfo.textContent = 'Click column headers to sort';
+            if (sortInfoElement) {
+                if (currentSort.column) {
+                    const direction = currentSort.direction === 'asc' ? 'ascending' : 'descending';
+                    sortInfoElement.textContent = `Sorted by ${currentSort.column.replace(/_/g, ' ')} (${direction})`;
+                } else {
+                    sortInfoElement.textContent = 'Click column headers to sort';
+                }
             }
         }
 
-        function showNoData(key) {
-            document.getElementById('dataTitle').textContent = key.replace(/_/g, ' ').toUpperCase();
-            document.getElementById('dataCount').textContent = '0 records';
-            document.getElementById('noData').style.display = 'block';
-            document.getElementById('dataTable').style.display = 'none';
-            document.getElementById('saveImageBtn').style.display = 'none';
-            document.getElementById('filterSection').classList.remove('show');
-            document.getElementById('tableStats').style.display = 'none';
-        }
-
-        function resetDataDisplay() {
-            document.getElementById('dataTitle').textContent = 'Select a data table';
-            document.getElementById('dataCount').textContent = '0 records';
-            document.getElementById('noData').style.display = 'block';
-            document.getElementById('dataTable').style.display = 'none';
-            document.getElementById('saveImageBtn').style.display = 'none';
-            document.getElementById('filterSection').classList.remove('show');
-            document.getElementById('tableStats').style.display = 'none';
-            
-            // Clear filters
-            document.getElementById('searchInput').value = '';
-            document.getElementById('columnFilter').value = '';
-            currentSort = { column: null, direction: 'asc' };
-            
-            // Remove active state from all buttons
-            document.querySelectorAll('.data-button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-        }
-
+        // Image export functionality
         async function saveTableAsImage() {
-            if (!currentDataKey || !filteredData.length) return;
+            if (!currentDataKey || filteredData.length === 0) {
+                alert('No data to export!');
+                return;
+            }
 
             const saveBtn = document.getElementById('saveImageBtn');
             const originalText = saveBtn.innerHTML;
             
             try {
-                // Show loading state
-                saveBtn.innerHTML = '⏳ Generating...';
+                // Disable button and show loading
                 saveBtn.disabled = true;
+                saveBtn.innerHTML = '⏳ Generating...';
 
-                // Create a temporary container for the full table (off-screen)
-                const tempContainer = document.createElement('div');
-                tempContainer.style.position = 'absolute';
-                tempContainer.style.top = '-9999px';
-                tempContainer.style.left = '-9999px';
-                tempContainer.style.background = 'white';
-                tempContainer.style.padding = '20px';
-                tempContainer.style.fontFamily = 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
-                tempContainer.style.fontSize = '12px';
-                tempContainer.style.width = 'auto';
-                tempContainer.style.minWidth = '1200px';
-                tempContainer.style.maxWidth = 'none';
+                // Create export table
+                await createExportTable();
+
+                // Use html2canvas to capture the export container
+                const exportContainer = document.getElementById('exportContainer');
                 
-                document.body.appendChild(tempContainer);
+                // Temporarily show the export container
+                exportContainer.style.position = 'fixed';
+                exportContainer.style.top = '50%';
+                exportContainer.style.left = '50%';
+                exportContainer.style.transform = 'translate(-50%, -50%)';
+                exportContainer.style.zIndex = '9999';
+                exportContainer.style.maxWidth = '90vw';
+                exportContainer.style.maxHeight = '90vh';
+                exportContainer.style.overflow = 'auto';
 
-                // Create header section
-                const headerDiv = document.createElement('div');
-                headerDiv.style.marginBottom = '20px';
-                headerDiv.style.borderBottom = '2px solid #e5e7eb';
-                headerDiv.style.paddingBottom = '15px';
+                // Wait a moment for rendering
+                await new Promise(resolve => setTimeout(resolve, 100));
 
-                // Title
-                const title = document.createElement('h1');
-                title.textContent = `${currentDataKey.replace(/_/g, ' ').toUpperCase()}`;
-                title.style.fontSize = '24px';
-                title.style.fontWeight = 'bold';
-                title.style.textAlign = 'center';
-                title.style.color = '#1f2937';
-                title.style.marginBottom = '10px';
-                headerDiv.appendChild(title);
-
-                // Record count and filter info
-                const infoDiv = document.createElement('div');
-                infoDiv.style.textAlign = 'center';
-                infoDiv.style.fontSize = '14px';
-                infoDiv.style.color = '#6b7280';
-                infoDiv.style.marginBottom = '10px';
-                
-                let infoText = `Total Records: ${filteredData.length}`;
-                if (filteredData.length !== originalData.length) {
-                    infoText += ` (filtered from ${originalData.length})`;
-                }
-                if (currentSort.column) {
-                    const sortDirection = currentSort.direction === 'asc' ? 'ascending' : 'descending';
-                    infoText += ` | Sorted by ${currentSort.column.replace(/_/g, ' ')} (${sortDirection})`;
-                }
-                
-                infoDiv.textContent = infoText;
-                headerDiv.appendChild(infoDiv);
-
-                // Generation timestamp
-                const timestamp = document.createElement('div');
-                timestamp.style.textAlign = 'center';
-                timestamp.style.fontSize = '11px';
-                timestamp.style.color = '#9ca3af';
-                timestamp.textContent = `Generated on ${new Date().toLocaleString()}`;
-                headerDiv.appendChild(timestamp);
-
-                tempContainer.appendChild(headerDiv);
-
-                // Get all unique keys from filtered data
-                const allKeys = new Set();
-                filteredData.forEach(item => {
-                    if (typeof item === 'object' && item !== null) {
-                        Object.keys(item).forEach(key => allKeys.add(key));
-                    }
-                });
-                const keys = Array.from(allKeys);
-
-                // Create full table with ALL filtered data
-                const table = document.createElement('table');
-                table.style.borderCollapse = 'collapse';
-                table.style.width = '100%';
-                table.style.backgroundColor = 'white';
-                table.style.border = '1px solid #d1d5db';
-                table.style.borderRadius = '8px';
-                table.style.overflow = 'hidden';
-
-                // Create header
-                const thead = document.createElement('thead');
-                const headerRow = document.createElement('tr');
-                headerRow.style.backgroundColor = '#f9fafb';
-                headerRow.style.borderBottom = '2px solid #e5e7eb';
-                
-                keys.forEach(key => {
-                    const th = document.createElement('th');
-                    th.textContent = key.replace(/_/g, ' ').toUpperCase();
-                    th.style.border = '1px solid #e5e7eb';
-                    th.style.padding = '12px 8px';
-                    th.style.textAlign = 'left';
-                    th.style.fontWeight = '700';
-                    th.style.fontSize = '10px';
-                    th.style.color = '#374151';
-                    th.style.whiteSpace = 'nowrap';
-                    th.style.backgroundColor = '#f9fafb';
-                    headerRow.appendChild(th);
-                });
-                thead.appendChild(headerRow);
-                table.appendChild(thead);
-
-                // Create body with ALL filtered data (not paginated)
-                const tbody = document.createElement('tbody');
-                filteredData.forEach((item, index) => {
-                    const tr = document.createElement('tr');
-                    tr.style.backgroundColor = index % 2 === 0 ? 'white' : '#f9fafb';
-                    tr.style.borderBottom = '1px solid #f3f4f6';
-                    
-                    keys.forEach(key => {
-                        const td = document.createElement('td');
-                        let value = item[key];
-                        
-                        // Format the value
-                        if (value === null || value === undefined) {
-                            td.textContent = '-';
-                            td.style.color = '#9ca3af';
-                        } else if (typeof value === 'number') {
-                            td.textContent = value.toLocaleString();
-                        } else if (typeof value === 'object') {
-                            td.textContent = JSON.stringify(value);
-                        } else {
-                            td.textContent = String(value);
-                        }
-                        
-                        td.style.border = '1px solid #f3f4f6';
-                        td.style.padding = '8px 6px';
-                        td.style.fontSize = '9px';
-                        td.style.whiteSpace = 'nowrap';
-                        
-                        tr.appendChild(td);
-                    });
-                    tbody.appendChild(tr);
-                });
-                table.appendChild(tbody);
-                tempContainer.appendChild(table);
-
-                // Wait for rendering
-                await new Promise(resolve => setTimeout(resolve, 200));
-
-                // Configure html2canvas options for full table capture
-                const options = {
+                const canvas = await html2canvas(exportContainer, {
+                    scale: 2,
                     backgroundColor: '#ffffff',
-                    scale: 1.5, // Good quality without being too large
-                    logging: false,
                     useCORS: true,
-                    allowTaint: true,
-                    foreignObjectRendering: true,
-                    scrollX: 0,
-                    scrollY: 0,
-                    width: tempContainer.scrollWidth,
-                    height: tempContainer.scrollHeight,
-                    onclone: (clonedDoc) => {
-                        // Ensure all styles are preserved in the cloned document
-                        const clonedContainer = clonedDoc.querySelector('div');
-                        if (clonedContainer) {
-                            clonedContainer.style.fontFamily = 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
-                        }
-                    }
-                };
+                    logging: false,
+                    width: exportContainer.scrollWidth,
+                    height: exportContainer.scrollHeight
+                });
 
-                // Generate canvas from the complete table
-                const canvas = await html2canvas(tempContainer, options);
-                
-                // Clean up temporary container
-                document.body.removeChild(tempContainer);
-                
-                // Create and trigger download
+                // Hide the export container again
+                exportContainer.style.position = 'absolute';
+                exportContainer.style.top = '-9999px';
+                exportContainer.style.left = '-9999px';
+                exportContainer.style.transform = 'none';
+                exportContainer.style.zIndex = '-1';
+
+                // Create download link
                 const link = document.createElement('a');
-                const timestamp_str = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
-                const filename = `${currentDataKey.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_full_table_${timestamp_str}.png`;
-                
-                link.download = filename;
+                link.download = `${currentDataKey}_data_export_${new Date().toISOString().split('T')[0]}.png`;
                 link.href = canvas.toDataURL('image/png');
+                
+                // Trigger download
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                
-                // Success feedback
-                saveBtn.innerHTML = '✅ Saved!';
-                setTimeout(() => {
-                    saveBtn.innerHTML = originalText;
-                }, 2000);
 
             } catch (error) {
-                console.error('Error saving image:', error);
-                saveBtn.innerHTML = '❌ Error';
-                setTimeout(() => {
-                    saveBtn.innerHTML = originalText;
-                }, 2000);
+                console.error('Error generating image:', error);
+                alert('Error generating image. Please try again.');
             } finally {
+                // Re-enable button
                 saveBtn.disabled = false;
+                saveBtn.innerHTML = originalText;
             }
+        }
+
+        async function createExportTable() {
+            const exportContainer = document.getElementById('exportContainer');
+            const exportHeader = document.getElementById('exportHeader');
+            const exportStats = document.getElementById('exportStats');
+            const exportTable = document.getElementById('exportTable');
+
+            // Set header
+            exportHeader.textContent = `${currentDataKey.replace(/_/g, ' ').toUpperCase()} - Data Export`;
+            
+            // Set stats
+            const now = new Date();
+            exportStats.innerHTML = `
+                Generated: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}<br>
+                Records: ${filteredData.length} ${filteredData.length !== originalData.length ? `(filtered from ${originalData.length})` : ''}
+                ${currentSort.column ? `<br>Sorted by: ${currentSort.column.replace(/_/g, ' ')} (${currentSort.direction})` : ''}
+            `;
+
+            // Clear existing table
+            exportTable.innerHTML = '';
+
+            if (filteredData.length === 0) {
+                exportTable.innerHTML = '<tr><td>No data to export</td></tr>';
+                return;
+            }
+
+            // Get all unique keys
+            const allKeys = new Set();
+            filteredData.forEach(item => {
+                if (typeof item === 'object' && item !== null) {
+                    Object.keys(item).forEach(key => allKeys.add(key));
+                }
+            });
+
+            const keys = Array.from(allKeys);
+
+            // Create header
+            const headerRow = document.createElement('tr');
+            keys.forEach(key => {
+                const th = document.createElement('th');
+                th.textContent = key.replace(/_/g, ' ').toUpperCase();
+                headerRow.appendChild(th);
+            });
+            exportTable.appendChild(headerRow);
+
+            // Create body rows
+            filteredData.forEach(item => {
+                const row = document.createElement('tr');
+                keys.forEach(key => {
+                    const td = document.createElement('td');
+                    let value = item[key];
+                    
+                    // Handle different data types
+                    if (value === null || value === undefined) {
+                        td.textContent = '-';
+                    } else if (typeof value === 'number') {
+                        td.textContent = value.toLocaleString();
+                    } else if (typeof value === 'object') {
+                        td.textContent = JSON.stringify(value);
+                    } else {
+                        td.textContent = String(value);
+                    }
+                    
+                    row.appendChild(td);
+                });
+                exportTable.appendChild(row);
+            });
         }
     </script>
 </body>
