@@ -402,95 +402,84 @@
             box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
         }
 
-        /* Export styles - optimized for image export */
+        /* Export container - positioned for proper rendering */
         .export-container {
+            position: fixed;
+            top: -10000px;
+            left: -10000px;
             background: white;
             padding: 20px;
-            border-radius: 10px;
-            position: absolute;
-            top: -9999px;
-            left: -9999px;
             max-width: none;
             width: auto;
+            height: auto;
             z-index: -1;
+            visibility: hidden;
+            border-radius: 0;
+            box-shadow: none;
         }
 
-        /* Multiple watermark system */
-        .watermark-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 5;
-            overflow: hidden;
+        .export-container.visible {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 10000;
+            visibility: visible;
+            background: white;
+            border: 1px solid #ddd;
+            max-height: 90vh;
+            max-width: 90vw;
+            overflow: auto;
         }
-
-        .export-watermark {
-            position: absolute;
-            color: rgba(0, 0, 0, 0.05);
-            font-size: 16px;
-            font-weight: bold;
-            pointer-events: none;
-            transform: rotate(-45deg);
-            white-space: nowrap;
-            user-select: none;
-            font-family: Arial, sans-serif;
-        }
-
-        /* Alternative watermark approach using pseudo-elements on table cells - disabled for cleaner look */
-        /* 
-        .export-container td::before {
-            content: '@CineNationBO';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-45deg);
-            color: rgba(0, 0, 0, 0.02);
-            font-size: 12px;
-            font-weight: bold;
-            pointer-events: none;
-            z-index: 1;
-            white-space: nowrap;
-        }
-
-        .export-container th::before {
-            content: '@CineNationBO';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-45deg);
-            color: rgba(0, 0, 0, 0.02);
-            font-size: 10px;
-            font-weight: bold;
-            pointer-events: none;
-            z-index: 1;
-            white-space: nowrap;
-        }
-        */
 
         .export-container table {
+            width: auto;
             min-width: auto;
-            width: 100%;
-            font-size: 12px;
-            position: relative;
-            z-index: 2;
+            font-size: 11px;
             background: white;
         }
 
         .export-container th,
         .export-container td {
-            padding: 8px;
+            padding: 6px 8px;
             border: 1px solid #ddd;
             white-space: nowrap;
-            position: relative;
             background: white;
+            font-size: 11px;
         }
 
         .export-container th {
             background: #f8f9fa;
             font-weight: bold;
+        }
+
+        .export-header {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .export-stats {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 11px;
+            color: #666;
+        }
+
+        /* Watermark for export */
+        .export-watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 24px;
+            font-weight: bold;
+            color: rgba(0, 0, 0, 0.05);
+            pointer-events: none;
+            z-index: 1;
+            white-space: nowrap;
+            font-family: Arial, sans-serif;
         }
 
         @media (max-width: 768px) {
@@ -624,9 +613,9 @@
 
     <!-- Hidden container for export -->
     <div id="exportContainer" class="export-container">
-        <div class="watermark-overlay" id="watermarkOverlay"></div>
-        <div id="exportHeader" style="text-align: center; margin-bottom: 15px; font-size: 18px; font-weight: bold; position: relative; z-index: 3;"></div>
-        <div id="exportStats" style="text-align: center; margin-bottom: 15px; font-size: 12px; color: #666; position: relative; z-index: 3;"></div>
+        <div class="export-watermark">@CineNationBO</div>
+        <div id="exportHeader" class="export-header"></div>
+        <div id="exportStats" class="export-stats"></div>
         <table id="exportTable"></table>
     </div>
 
@@ -1062,32 +1051,7 @@
             }
         }
 
-        // Create multiple watermarks across the export container
-        function createWatermarks() {
-            const watermarkOverlay = document.getElementById('watermarkOverlay');
-            watermarkOverlay.innerHTML = ''; // Clear existing watermarks
-            
-            // Get container dimensions (we'll estimate since it's hidden)
-            const estimatedWidth = 800; // Estimated width
-            const estimatedHeight = 600; // Estimated height
-            
-            // Create a grid of watermarks
-            const watermarkText = '@CineNationBO';
-            const spacing = 150; // Space between watermarks
-            
-            for (let x = 0; x < estimatedWidth + 200; x += spacing) {
-                for (let y = 0; y < estimatedHeight + 200; y += spacing) {
-                    const watermark = document.createElement('div');
-                    watermark.className = 'export-watermark';
-                    watermark.textContent = watermarkText;
-                    watermark.style.left = x + 'px';
-                    watermark.style.top = y + 'px';
-                    watermarkOverlay.appendChild(watermark);
-                }
-            }
-        }
-
-        // Image export functionality with multiple watermarks
+        // Fixed image export functionality
         async function saveTableAsImage() {
             if (!currentDataKey || filteredData.length === 0) {
                 alert('No data to export!');
@@ -1109,83 +1073,40 @@
                     return;
                 }
 
-                // Create export table first
-                await createExportTable();
+                // Create export table
+                createExportTable();
                 
                 const exportContainer = document.getElementById('exportContainer');
                 
-                // Temporarily show the export container and force layout
-                exportContainer.style.position = 'fixed';
-                exportContainer.style.top = '20px';
-                exportContainer.style.left = '20px';
-                exportContainer.style.zIndex = '10000';
-                exportContainer.style.backgroundColor = 'white';
-                exportContainer.style.padding = '30px';
-                exportContainer.style.maxWidth = 'none';
-                exportContainer.style.width = 'auto';
-                exportContainer.style.height = 'auto';
-                exportContainer.style.maxHeight = 'none';
-                exportContainer.style.visibility = 'visible';
+                // Make container visible for rendering
+                exportContainer.classList.add('visible');
+                
+                // Wait for DOM to update
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Get the actual rendered size
+                const rect = exportContainer.getBoundingClientRect();
+                console.log('Export container size:', rect.width, 'x', rect.height);
 
-                // Force browser to render the container
-                exportContainer.offsetHeight; // Trigger reflow
-                
-                // Wait for proper rendering
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                // Get actual dimensions after rendering
-                const actualWidth = exportContainer.scrollWidth;
-                const actualHeight = exportContainer.scrollHeight;
-                
-                console.log('Container dimensions:', actualWidth, 'x', actualHeight);
-                
-                // Create background watermarks
-                addBackgroundWatermarks(exportContainer, actualWidth, actualHeight);
-                
-                // Wait for watermarks to render
-                await new Promise(resolve => setTimeout(resolve, 500));
-
-                // Generate image with specific options
+                // Generate image
                 const canvas = await html2canvas(exportContainer, {
-                    scale: 2,
+                    scale: 2, // Higher resolution
                     backgroundColor: '#ffffff',
                     useCORS: true,
                     allowTaint: false,
-                    logging: true,
-                    width: actualWidth,
-                    height: actualHeight,
-                    windowWidth: actualWidth + 100,
-                    windowHeight: actualHeight + 100,
+                    logging: false,
+                    width: rect.width,
+                    height: rect.height,
+                    windowWidth: window.innerWidth,
+                    windowHeight: window.innerHeight,
                     scrollX: 0,
-                    scrollY: 0,
-                    foreignObjectRendering: true,
-                    removeContainer: false,
-                    onclone: function(clonedDoc) {
-                        console.log('Cloning document for html2canvas...');
-                        const clonedContainer = clonedDoc.getElementById('exportContainer');
-                        if (clonedContainer) {
-                            clonedContainer.style.position = 'static';
-                            clonedContainer.style.visibility = 'visible';
-                            clonedContainer.style.display = 'block';
-                            
-                            // Ensure watermarks are visible in clone
-                            const watermarks = clonedContainer.querySelectorAll('.background-watermark');
-                            watermarks.forEach(wm => {
-                                wm.style.visibility = 'visible';
-                                wm.style.display = 'block';
-                            });
-                        }
-                    }
+                    scrollY: 0
                 });
 
-                // Hide the export container
-                exportContainer.style.position = 'absolute';
-                exportContainer.style.top = '-9999px';
-                exportContainer.style.left = '-9999px';
-                exportContainer.style.zIndex = '-1';
-                exportContainer.style.visibility = 'hidden';
+                // Hide container
+                exportContainer.classList.remove('visible');
 
-                // Convert canvas to blob and download
+                // Download the image
                 canvas.toBlob(function(blob) {
                     if (blob) {
                         const url = URL.createObjectURL(blob);
@@ -1205,121 +1126,31 @@
 
             } catch (error) {
                 console.error('Error generating image:', error);
-                alert('Error generating image: ' + error.message + '\n\nTrying alternative method...');
+                alert('Error generating image. Trying alternative method...');
                 
-                // Try alternative method
                 try {
                     await saveTableAsImageAlternative();
                 } catch (altError) {
-                    console.error('Alternative method also failed:', altError);
-                    alert('Image export failed. Downloading as CSV instead.');
+                    console.error('Alternative method failed:', altError);
+                    alert('Image export failed. Please try the CSV export instead.');
                     downloadTableAsCSV();
                 }
             } finally {
-                // Re-enable button
+                // Re-enable button and hide container
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = originalText;
-                
-                // Ensure export container is hidden
-                const exportContainer = document.getElementById('exportContainer');
-                exportContainer.style.position = 'absolute';
-                exportContainer.style.top = '-9999px';
-                exportContainer.style.left = '-9999px';
-                exportContainer.style.zIndex = '-1';
-                exportContainer.style.visibility = 'hidden';
-                
-                // Clean up background watermarks
-                const bgWatermarks = exportContainer.querySelectorAll('.background-watermark');
-                bgWatermarks.forEach(wm => wm.remove());
+                document.getElementById('exportContainer').classList.remove('visible');
             }
         }
 
-        // Add background watermarks that html2canvas can capture
-        function addBackgroundWatermarks(container, width, height) {
-            console.log('Adding background watermarks...');
-            
-            // Remove existing background watermarks
-            const existingWatermarks = container.querySelectorAll('.background-watermark');
-            existingWatermarks.forEach(wm => wm.remove());
-            
-            const watermarkText = '@CineNationBO';
-            
-            // Define 4 strategic positions for watermarks
-            const positions = [
-                { x: width * 0.2, y: height * 0.25 },  // Top left area
-                { x: width * 0.8, y: height * 0.25 },  // Top right area
-                { x: width * 0.3, y: height * 0.7 },   // Bottom left area
-                { x: width * 0.7, y: height * 0.7 }    // Bottom right area
-            ];
-            
-            positions.forEach((pos, index) => {
-                const watermark = document.createElement('div');
-                watermark.className = 'background-watermark';
-                watermark.textContent = watermarkText;
-                
-                // Style the watermark - slightly brighter and larger
-                watermark.style.position = 'absolute';
-                watermark.style.left = pos.x + 'px';
-                watermark.style.top = pos.y + 'px';
-                watermark.style.color = 'rgba(0, 0, 0, 0.12)'; // Brighter opacity
-                watermark.style.fontSize = '18px'; // Larger font
-                watermark.style.fontWeight = 'bold';
-                watermark.style.fontFamily = 'Arial, sans-serif';
-                watermark.style.transform = 'rotate(-45deg)';
-                watermark.style.transformOrigin = 'center';
-                watermark.style.pointerEvents = 'none';
-                watermark.style.userSelect = 'none';
-                watermark.style.zIndex = '3';
-                watermark.style.whiteSpace = 'nowrap';
-                watermark.style.visibility = 'visible';
-                watermark.style.display = 'block';
-                
-                container.appendChild(watermark);
-            });
-            
-            console.log('Added 4 strategic watermarks');
-        }
-
-        // Create watermarks based on actual container size
-        function createWatermarksForSize(width, height) {
-            const watermarkOverlay = document.getElementById('watermarkOverlay');
-            watermarkOverlay.innerHTML = ''; // Clear existing watermarks
-            
-            const watermarkText = '@CineNationBO';
-            const spacing = 120; // Reduced spacing for more coverage
-            
-            // Create a grid of watermarks with some randomization
-            for (let x = -50; x < width + 100; x += spacing) {
-                for (let y = -50; y < height + 100; y += spacing) {
-                    const watermark = document.createElement('div');
-                    watermark.className = 'export-watermark';
-                    watermark.textContent = watermarkText;
-                    
-                    // Add some randomization to make it look more natural
-                    const offsetX = (Math.random() - 0.5) * 30;
-                    const offsetY = (Math.random() - 0.5) * 30;
-                    
-                    watermark.style.left = (x + offsetX) + 'px';
-                    watermark.style.top = (y + offsetY) + 'px';
-                    
-                    // Vary opacity slightly
-                    const opacity = 0.02 + Math.random() * 0.02; // Between 0.02 and 0.04
-                    watermark.style.color = `rgba(0, 0, 0, ${opacity})`;
-                    
-                    watermarkOverlay.appendChild(watermark);
-                }
-            }
-        }
-
-        // Alternative method using canvas drawing
+        // Alternative method using print dialog
         async function saveTableAsImageAlternative() {
             if (!filteredData.length) return;
 
             // Create a new window with printable content
-            const printWindow = window.open('', '_blank', 'width=800,height=600');
+            const printWindow = window.open('', '_blank', 'width=1000,height=700');
             if (!printWindow) {
-                // If popup blocked, use different method
-                downloadTableAsCSV();
+                alert('Please allow popups and try again, or use CSV export instead.');
                 return;
             }
 
@@ -1331,32 +1162,70 @@
                 <head>
                     <title>${currentDataKey} - Data Export</title>
                     <style>
-                        body { font-family: Arial, sans-serif; margin: 20px; position: relative; }
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            margin: 20px; 
+                            position: relative;
+                            background: white;
+                        }
                         body::before { 
                             content: '@CineNationBO'; 
                             position: fixed; 
                             top: 50%; 
                             left: 50%; 
                             transform: translate(-50%, -50%) rotate(-45deg); 
-                            font-size: 48px; 
-                            color: rgba(0, 0, 0, 0.03); 
+                            font-size: 36px; 
+                            color: rgba(0, 0, 0, 0.05); 
                             font-weight: bold; 
                             pointer-events: none; 
                             z-index: -1;
+                            white-space: nowrap;
                         }
-                        table { width: 100%; border-collapse: collapse; margin-top: 20px; position: relative; z-index: 1; }
-                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; background: rgba(255,255,255,0.9); }
-                        th { background-color: rgba(242, 242, 242, 0.9); font-weight: bold; }
-                        .header { text-align: center; margin-bottom: 20px; position: relative; z-index: 1; }
-                        .stats { text-align: center; color: #666; font-size: 14px; margin-bottom: 15px; position: relative; z-index: 1; }
-                        @media print { .no-print { display: none; } }
+                        table { 
+                            width: 100%; 
+                            border-collapse: collapse; 
+                            margin-top: 20px; 
+                            position: relative; 
+                            z-index: 1; 
+                            background: white;
+                        }
+                        th, td { 
+                            border: 1px solid #ddd; 
+                            padding: 8px; 
+                            text-align: left; 
+                            background: white;
+                            font-size: 12px;
+                        }
+                        th { 
+                            background-color: #f2f2f2; 
+                            font-weight: bold; 
+                        }
+                        .header { 
+                            text-align: center; 
+                            margin-bottom: 20px; 
+                            position: relative; 
+                            z-index: 1; 
+                        }
+                        .stats { 
+                            text-align: center; 
+                            color: #666; 
+                            font-size: 12px; 
+                            margin-bottom: 15px; 
+                            position: relative; 
+                            z-index: 1; 
+                        }
+                        .no-print { margin-bottom: 20px; }
+                        @media print { 
+                            .no-print { display: none; }
+                            body { margin: 0; }
+                        }
                     </style>
                 </head>
                 <body>
-                    <div class="no-print" style="margin-bottom: 20px;">
-                        <button onclick="window.print()">🖨️ Print</button>
-                        <button onclick="window.close()">❌ Close</button>
-                        <p><em>Right-click and "Save as PDF" or use your browser's print-to-PDF feature</em></p>
+                    <div class="no-print">
+                        <button onclick="window.print()" style="padding: 10px 20px; margin-right: 10px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;">🖨️ Print / Save as PDF</button>
+                        <button onclick="window.close()" style="padding: 10px 20px; background: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer;">❌ Close</button>
+                        <p style="margin-top: 10px; font-size: 14px; color: #666;"><em>Use Ctrl+P or Cmd+P to print, then choose "Save as PDF" to save as image</em></p>
                     </div>
                     ${printContent}
                 </body>
@@ -1428,60 +1297,8 @@
             return html;
         }
 
-        // CSV export as final fallback
-        function downloadTableAsCSV() {
-            if (!filteredData.length) {
-                alert('No data to export!');
-                return;
-            }
-
-            // Get all unique keys
-            const allKeys = new Set();
-            filteredData.forEach(item => {
-                if (typeof item === 'object' && item !== null) {
-                    Object.keys(item).forEach(key => allKeys.add(key));
-                }
-            });
-
-            const keys = Array.from(allKeys);
-            
-            // Create CSV content
-            let csvContent = '';
-            
-            // Add header
-            csvContent += keys.map(key => `"${key.replace(/_/g, ' ').toUpperCase()}"`).join(',') + '\n';
-            
-            // Add data rows
-            filteredData.forEach(item => {
-                const row = keys.map(key => {
-                    let value = item[key];
-                    if (value === null || value === undefined) {
-                        return '""';
-                    }
-                    if (typeof value === 'object') {
-                        value = JSON.stringify(value);
-                    }
-                    return `"${String(value).replace(/"/g, '""')}"`;
-                });
-                csvContent += row.join(',') + '\n';
-            });
-
-            // Download CSV
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', `${currentDataKey}_data_export_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-            
-            alert('Data exported as CSV file since image export failed.');
-        }
-
-        async function createExportTable() {
-            const exportContainer = document.getElementById('exportContainer');
+        // Create export table for html2canvas
+        function createExportTable() {
             const exportHeader = document.getElementById('exportHeader');
             const exportStats = document.getElementById('exportStats');
             const exportTable = document.getElementById('exportTable');
@@ -1546,6 +1363,56 @@
                 });
                 exportTable.appendChild(row);
             });
+        }
+
+        // CSV export functionality
+        function downloadTableAsCSV() {
+            if (!filteredData.length) {
+                alert('No data to export!');
+                return;
+            }
+
+            // Get all unique keys
+            const allKeys = new Set();
+            filteredData.forEach(item => {
+                if (typeof item === 'object' && item !== null) {
+                    Object.keys(item).forEach(key => allKeys.add(key));
+                }
+            });
+
+            const keys = Array.from(allKeys);
+            
+            // Create CSV content
+            let csvContent = '';
+            
+            // Add header
+            csvContent += keys.map(key => `"${key.replace(/_/g, ' ').toUpperCase()}"`).join(',') + '\n';
+            
+            // Add data rows
+            filteredData.forEach(item => {
+                const row = keys.map(key => {
+                    let value = item[key];
+                    if (value === null || value === undefined) {
+                        return '""';
+                    }
+                    if (typeof value === 'object') {
+                        value = JSON.stringify(value);
+                    }
+                    return `"${String(value).replace(/"/g, '""')}"`;
+                });
+                csvContent += row.join(',') + '\n';
+            });
+
+            // Download CSV
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `${currentDataKey}_data_export_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         }
     </script>
 </body>
