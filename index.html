@@ -413,50 +413,30 @@
             max-width: none;
             width: auto;
             z-index: -1;
-            position: relative;
         }
 
-        .export-container::before {
-            content: '@CineNationBO';
+        /* Multiple watermark system */
+        .watermark-overlay {
             position: absolute;
-            top: 50%;
-            left: 20%;
-            transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 24px;
-            color: rgba(0, 0, 0, 0.05);
-            font-weight: bold;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             pointer-events: none;
             z-index: 1;
-        }
-
-        .export-container::after {
-            content: '@CineNationBO';
-            position: absolute;
-            top: 30%;
-            right: 20%;
-            transform: translate(50%, -50%) rotate(-45deg);
-            font-size: 24px;
-            color: rgba(0, 0, 0, 0.05);
-            font-weight: bold;
-            pointer-events: none;
-            z-index: 1;
+            overflow: hidden;
         }
 
         .export-watermark {
             position: absolute;
-            color: rgba(0, 0, 0, 0.04);
-            font-size: 20px;
+            color: rgba(0, 0, 0, 0.03);
+            font-size: 18px;
             font-weight: bold;
             pointer-events: none;
-            z-index: 1;
             transform: rotate(-45deg);
             white-space: nowrap;
+            user-select: none;
         }
-
-        .export-watermark:nth-child(1) { top: 25%; left: 15%; }
-        .export-watermark:nth-child(2) { top: 45%; right: 25%; }
-        .export-watermark:nth-child(3) { top: 65%; left: 35%; }
-        .export-watermark:nth-child(4) { bottom: 25%; right: 15%; }
 
         .export-container table {
             min-width: auto;
@@ -464,7 +444,7 @@
             font-size: 12px;
             position: relative;
             z-index: 2;
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.98);
         }
 
         .export-container th,
@@ -473,11 +453,11 @@
             border: 1px solid #ddd;
             white-space: nowrap;
             position: relative;
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.98);
         }
 
         .export-container th {
-            background: rgba(248, 249, 250, 0.95);
+            background: rgba(248, 249, 250, 0.98);
             font-weight: bold;
         }
 
@@ -612,10 +592,7 @@
 
     <!-- Hidden container for export -->
     <div id="exportContainer" class="export-container">
-        <div class="export-watermark">@CineNationBO</div>
-        <div class="export-watermark">@CineNationBO</div>
-        <div class="export-watermark">@CineNationBO</div>
-        <div class="export-watermark">@CineNationBO</div>
+        <div class="watermark-overlay" id="watermarkOverlay"></div>
         <div id="exportHeader" style="text-align: center; margin-bottom: 15px; font-size: 18px; font-weight: bold; position: relative; z-index: 3;"></div>
         <div id="exportStats" style="text-align: center; margin-bottom: 15px; font-size: 12px; color: #666; position: relative; z-index: 3;"></div>
         <table id="exportTable"></table>
@@ -1053,7 +1030,32 @@
             }
         }
 
-        // Image export functionality with fallback methods
+        // Create multiple watermarks across the export container
+        function createWatermarks() {
+            const watermarkOverlay = document.getElementById('watermarkOverlay');
+            watermarkOverlay.innerHTML = ''; // Clear existing watermarks
+            
+            // Get container dimensions (we'll estimate since it's hidden)
+            const estimatedWidth = 800; // Estimated width
+            const estimatedHeight = 600; // Estimated height
+            
+            // Create a grid of watermarks
+            const watermarkText = '@CineNationBO';
+            const spacing = 150; // Space between watermarks
+            
+            for (let x = 0; x < estimatedWidth + 200; x += spacing) {
+                for (let y = 0; y < estimatedHeight + 200; y += spacing) {
+                    const watermark = document.createElement('div');
+                    watermark.className = 'export-watermark';
+                    watermark.textContent = watermarkText;
+                    watermark.style.left = x + 'px';
+                    watermark.style.top = y + 'px';
+                    watermarkOverlay.appendChild(watermark);
+                }
+            }
+        }
+
+        // Image export functionality with multiple watermarks
         async function saveTableAsImage() {
             if (!currentDataKey || filteredData.length === 0) {
                 alert('No data to export!');
@@ -1075,8 +1077,9 @@
                     return;
                 }
 
-                // Create export table
+                // Create export table and watermarks
                 await createExportTable();
+                createWatermarks();
 
                 // Use html2canvas to capture the export container
                 const exportContainer = document.getElementById('exportContainer');
@@ -1091,9 +1094,18 @@
                 exportContainer.style.maxWidth = 'none';
                 exportContainer.style.width = 'auto';
                 exportContainer.style.height = 'auto';
+                exportContainer.style.maxHeight = 'none';
 
-                // Wait for rendering
-                await new Promise(resolve => setTimeout(resolve, 300));
+                // Wait for rendering and measure actual dimensions
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Update watermarks based on actual size
+                const actualWidth = exportContainer.scrollWidth;
+                const actualHeight = exportContainer.scrollHeight;
+                createWatermarksForSize(actualWidth, actualHeight);
+
+                // Wait a bit more for watermarks to render
+                await new Promise(resolve => setTimeout(resolve, 200));
 
                 // Generate image
                 const canvas = await html2canvas(exportContainer, {
@@ -1101,9 +1113,13 @@
                     backgroundColor: '#ffffff',
                     useCORS: true,
                     allowTaint: true,
-                    logging: true,
-                    windowWidth: exportContainer.scrollWidth,
-                    windowHeight: exportContainer.scrollHeight,
+                    logging: false,
+                    width: actualWidth,
+                    height: actualHeight,
+                    windowWidth: actualWidth,
+                    windowHeight: actualHeight,
+                    scrollX: 0,
+                    scrollY: 0,
                     onclone: function(clonedDoc) {
                         // Ensure styles are applied in cloned document
                         const clonedContainer = clonedDoc.getElementById('exportContainer');
@@ -1159,6 +1175,37 @@
             }
         }
 
+        // Create watermarks based on actual container size
+        function createWatermarksForSize(width, height) {
+            const watermarkOverlay = document.getElementById('watermarkOverlay');
+            watermarkOverlay.innerHTML = ''; // Clear existing watermarks
+            
+            const watermarkText = '@CineNationBO';
+            const spacing = 120; // Reduced spacing for more coverage
+            
+            // Create a grid of watermarks with some randomization
+            for (let x = -50; x < width + 100; x += spacing) {
+                for (let y = -50; y < height + 100; y += spacing) {
+                    const watermark = document.createElement('div');
+                    watermark.className = 'export-watermark';
+                    watermark.textContent = watermarkText;
+                    
+                    // Add some randomization to make it look more natural
+                    const offsetX = (Math.random() - 0.5) * 30;
+                    const offsetY = (Math.random() - 0.5) * 30;
+                    
+                    watermark.style.left = (x + offsetX) + 'px';
+                    watermark.style.top = (y + offsetY) + 'px';
+                    
+                    // Vary opacity slightly
+                    const opacity = 0.02 + Math.random() * 0.02; // Between 0.02 and 0.04
+                    watermark.style.color = `rgba(0, 0, 0, ${opacity})`;
+                    
+                    watermarkOverlay.appendChild(watermark);
+                }
+            }
+        }
+
         // Alternative method using canvas drawing
         async function saveTableAsImageAlternative() {
             if (!filteredData.length) return;
@@ -1179,12 +1226,24 @@
                 <head>
                     <title>${currentDataKey} - Data Export</title>
                     <style>
-                        body { font-family: Arial, sans-serif; margin: 20px; }
-                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                        th { background-color: #f2f2f2; font-weight: bold; }
-                        .header { text-align: center; margin-bottom: 20px; }
-                        .stats { text-align: center; color: #666; font-size: 14px; margin-bottom: 15px; }
+                        body { font-family: Arial, sans-serif; margin: 20px; position: relative; }
+                        body::before { 
+                            content: '@CineNationBO'; 
+                            position: fixed; 
+                            top: 50%; 
+                            left: 50%; 
+                            transform: translate(-50%, -50%) rotate(-45deg); 
+                            font-size: 48px; 
+                            color: rgba(0, 0, 0, 0.03); 
+                            font-weight: bold; 
+                            pointer-events: none; 
+                            z-index: -1;
+                        }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; position: relative; z-index: 1; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; background: rgba(255,255,255,0.9); }
+                        th { background-color: rgba(242, 242, 242, 0.9); font-weight: bold; }
+                        .header { text-align: center; margin-bottom: 20px; position: relative; z-index: 1; }
+                        .stats { text-align: center; color: #666; font-size: 14px; margin-bottom: 15px; position: relative; z-index: 1; }
                         @media print { .no-print { display: none; } }
                     </style>
                 </head>
