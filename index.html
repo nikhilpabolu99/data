@@ -423,19 +423,49 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: 1;
+            z-index: 5;
             overflow: hidden;
         }
 
         .export-watermark {
             position: absolute;
-            color: rgba(0, 0, 0, 0.03);
-            font-size: 18px;
+            color: rgba(0, 0, 0, 0.05);
+            font-size: 16px;
             font-weight: bold;
             pointer-events: none;
             transform: rotate(-45deg);
             white-space: nowrap;
             user-select: none;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Alternative watermark approach using pseudo-elements on table cells */
+        .export-container td::before {
+            content: '@CineNationBO';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            color: rgba(0, 0, 0, 0.02);
+            font-size: 12px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 1;
+            white-space: nowrap;
+        }
+
+        .export-container th::before {
+            content: '@CineNationBO';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            color: rgba(0, 0, 0, 0.02);
+            font-size: 10px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 1;
+            white-space: nowrap;
         }
 
         .export-container table {
