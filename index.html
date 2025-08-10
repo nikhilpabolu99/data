@@ -439,7 +439,8 @@
             font-family: Arial, sans-serif;
         }
 
-        /* Alternative watermark approach using pseudo-elements on table cells */
+        /* Alternative watermark approach using pseudo-elements on table cells - disabled for cleaner look */
+        /* 
         .export-container td::before {
             content: '@CineNationBO';
             position: absolute;
@@ -467,6 +468,7 @@
             z-index: 1;
             white-space: nowrap;
         }
+        */
 
         .export-container table {
             min-width: auto;
@@ -474,7 +476,7 @@
             font-size: 12px;
             position: relative;
             z-index: 2;
-            background: rgba(255, 255, 255, 0.98);
+            background: white;
         }
 
         .export-container th,
@@ -483,11 +485,11 @@
             border: 1px solid #ddd;
             white-space: nowrap;
             position: relative;
-            background: rgba(255, 255, 255, 0.98);
+            background: white;
         }
 
         .export-container th {
-            background: rgba(248, 249, 250, 0.98);
+            background: #f8f9fa;
             font-weight: bold;
         }
 
@@ -1107,64 +1109,81 @@
                     return;
                 }
 
-                // Create export table and watermarks
+                // Create export table first
                 await createExportTable();
-                createWatermarks();
-
-                // Use html2canvas to capture the export container
+                
                 const exportContainer = document.getElementById('exportContainer');
                 
-                // Temporarily show the export container
+                // Temporarily show the export container and force layout
                 exportContainer.style.position = 'fixed';
-                exportContainer.style.top = '0';
-                exportContainer.style.left = '0';
+                exportContainer.style.top = '20px';
+                exportContainer.style.left = '20px';
                 exportContainer.style.zIndex = '10000';
                 exportContainer.style.backgroundColor = 'white';
-                exportContainer.style.padding = '20px';
+                exportContainer.style.padding = '30px';
                 exportContainer.style.maxWidth = 'none';
                 exportContainer.style.width = 'auto';
                 exportContainer.style.height = 'auto';
                 exportContainer.style.maxHeight = 'none';
+                exportContainer.style.visibility = 'visible';
 
-                // Wait for rendering and measure actual dimensions
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // Force browser to render the container
+                exportContainer.offsetHeight; // Trigger reflow
                 
-                // Update watermarks based on actual size
+                // Wait for proper rendering
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Get actual dimensions after rendering
                 const actualWidth = exportContainer.scrollWidth;
                 const actualHeight = exportContainer.scrollHeight;
-                createWatermarksForSize(actualWidth, actualHeight);
+                
+                console.log('Container dimensions:', actualWidth, 'x', actualHeight);
+                
+                // Create background watermarks
+                addBackgroundWatermarks(exportContainer, actualWidth, actualHeight);
+                
+                // Wait for watermarks to render
+                await new Promise(resolve => setTimeout(resolve, 500));
 
-                // Wait a bit more for watermarks to render
-                await new Promise(resolve => setTimeout(resolve, 200));
-
-                // Generate image
+                // Generate image with specific options
                 const canvas = await html2canvas(exportContainer, {
-                    scale: 1.5,
+                    scale: 2,
                     backgroundColor: '#ffffff',
                     useCORS: true,
-                    allowTaint: true,
-                    logging: false,
+                    allowTaint: false,
+                    logging: true,
                     width: actualWidth,
                     height: actualHeight,
-                    windowWidth: actualWidth,
-                    windowHeight: actualHeight,
+                    windowWidth: actualWidth + 100,
+                    windowHeight: actualHeight + 100,
                     scrollX: 0,
                     scrollY: 0,
+                    foreignObjectRendering: true,
+                    removeContainer: false,
                     onclone: function(clonedDoc) {
-                        // Ensure styles are applied in cloned document
+                        console.log('Cloning document for html2canvas...');
                         const clonedContainer = clonedDoc.getElementById('exportContainer');
                         if (clonedContainer) {
                             clonedContainer.style.position = 'static';
                             clonedContainer.style.visibility = 'visible';
+                            clonedContainer.style.display = 'block';
+                            
+                            // Ensure watermarks are visible in clone
+                            const watermarks = clonedContainer.querySelectorAll('.background-watermark');
+                            watermarks.forEach(wm => {
+                                wm.style.visibility = 'visible';
+                                wm.style.display = 'block';
+                            });
                         }
                     }
                 });
 
-                // Hide the export container again
+                // Hide the export container
                 exportContainer.style.position = 'absolute';
                 exportContainer.style.top = '-9999px';
                 exportContainer.style.left = '-9999px';
                 exportContainer.style.zIndex = '-1';
+                exportContainer.style.visibility = 'hidden';
 
                 // Convert canvas to blob and download
                 canvas.toBlob(function(blob) {
@@ -1177,19 +1196,24 @@
                         link.click();
                         document.body.removeChild(link);
                         URL.revokeObjectURL(url);
+                        
+                        console.log('Image exported successfully!');
                     } else {
                         throw new Error('Failed to create image blob');
                     }
-                }, 'image/png', 0.95);
+                }, 'image/png', 1.0);
 
             } catch (error) {
                 console.error('Error generating image:', error);
+                alert('Error generating image: ' + error.message + '\n\nTrying alternative method...');
+                
                 // Try alternative method
                 try {
                     await saveTableAsImageAlternative();
                 } catch (altError) {
                     console.error('Alternative method also failed:', altError);
-                    alert('Error generating image. Your browser may not support this feature. Try using Chrome or Firefox.');
+                    alert('Image export failed. Downloading as CSV instead.');
+                    downloadTableAsCSV();
                 }
             } finally {
                 // Re-enable button
@@ -1202,7 +1226,58 @@
                 exportContainer.style.top = '-9999px';
                 exportContainer.style.left = '-9999px';
                 exportContainer.style.zIndex = '-1';
+                exportContainer.style.visibility = 'hidden';
+                
+                // Clean up background watermarks
+                const bgWatermarks = exportContainer.querySelectorAll('.background-watermark');
+                bgWatermarks.forEach(wm => wm.remove());
             }
+        }
+
+        // Add background watermarks that html2canvas can capture
+        function addBackgroundWatermarks(container, width, height) {
+            console.log('Adding background watermarks...');
+            
+            // Remove existing background watermarks
+            const existingWatermarks = container.querySelectorAll('.background-watermark');
+            existingWatermarks.forEach(wm => wm.remove());
+            
+            const watermarkText = '@CineNationBO';
+            
+            // Define 4 strategic positions for watermarks
+            const positions = [
+                { x: width * 0.2, y: height * 0.25 },  // Top left area
+                { x: width * 0.8, y: height * 0.25 },  // Top right area
+                { x: width * 0.3, y: height * 0.7 },   // Bottom left area
+                { x: width * 0.7, y: height * 0.7 }    // Bottom right area
+            ];
+            
+            positions.forEach((pos, index) => {
+                const watermark = document.createElement('div');
+                watermark.className = 'background-watermark';
+                watermark.textContent = watermarkText;
+                
+                // Style the watermark - slightly brighter and larger
+                watermark.style.position = 'absolute';
+                watermark.style.left = pos.x + 'px';
+                watermark.style.top = pos.y + 'px';
+                watermark.style.color = 'rgba(0, 0, 0, 0.12)'; // Brighter opacity
+                watermark.style.fontSize = '18px'; // Larger font
+                watermark.style.fontWeight = 'bold';
+                watermark.style.fontFamily = 'Arial, sans-serif';
+                watermark.style.transform = 'rotate(-45deg)';
+                watermark.style.transformOrigin = 'center';
+                watermark.style.pointerEvents = 'none';
+                watermark.style.userSelect = 'none';
+                watermark.style.zIndex = '3';
+                watermark.style.whiteSpace = 'nowrap';
+                watermark.style.visibility = 'visible';
+                watermark.style.display = 'block';
+                
+                container.appendChild(watermark);
+            });
+            
+            console.log('Added 4 strategic watermarks');
         }
 
         // Create watermarks based on actual container size
