@@ -106,6 +106,7 @@
       margin-left: 30px;
       padding-left: 15px;
       border-left: 3px solid #ddd;
+      margin-top: 10px;
     }
 
     .file-button {
@@ -124,6 +125,32 @@
 
     .back-button:hover {
       background: linear-gradient(135deg, #ee5a24 0%, #ff6b6b 100%);
+    }
+
+    .alphabet-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .alphabet-button {
+      min-width: 60px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 1.1em;
+      padding: 15px 10px;
+    }
+
+    .section-title {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin: 20px 0;
+      color: #333;
+      text-align: center;
     }
 
     /* JSON Viewer Styles */
@@ -202,6 +229,7 @@
       box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
       position: relative;
       overflow: hidden;
+      text-align: center;
     }
 
     .data-button:hover {
@@ -242,12 +270,6 @@
       color: #333;
       font-size: 1.5em;
       font-weight: 600;
-    }
-
-    .data-actions {
-      display: flex;
-      align-items: center;
-      gap: 15px;
     }
 
     .data-count {
@@ -386,7 +408,7 @@
         font-size: 2em;
       }
 
-      .button-grid {
+      .button-grid, .alphabet-grid {
         grid-template-columns: 1fr;
       }
 
@@ -394,6 +416,11 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 15px;
+      }
+
+      .filter-controls {
+        flex-direction: column;
+        align-items: stretch;
       }
 
       th, td {
@@ -472,872 +499,770 @@
   </div>
 
   <script>
-    // Configuration
-    const owner = "nikhilpabolu99";
-    const repo = "data";
-    const branch = "main";
-    const apiBase = `https://api.github.com/repos/${owner}/${repo}/contents`;
+    // Configuration - Easy to modify
+    const CONFIG = {
+      owner: "nikhilpabolu99",
+      repo: "data",
+      branch: "main",
+      moviesFolder: "movies"
+    };
 
-    // JSON Viewer State
-    let jsonData = {};
-    let currentDataKey = null;
-    let originalData = [];
-    let filteredData = [];
-    let currentSort = { column: null, direction: 'asc' };
+    const API_BASE = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents`;
 
-    // Initialize the application
-    document.addEventListener('DOMContentLoaded', function() {
-      initializeExplorer();
-    });
+    // Application State
+    const AppState = {
+      // Navigation
+      navigationStack: [],
+      currentView: 'root',
+      
+      // JSON Viewer
+      jsonData: {},
+      currentDataKey: null,
+      originalData: [],
+      filteredData: [],
+      currentSort: { column: null, direction: 'asc' }
+    };
 
-    function initializeExplorer() {
-      navigationStack = [];
-      currentView = 'root';
-      loadFolders("", "explorer", true);
-    }
+    // Utility Functions
+    const Utils = {
+      // Create alphabet array for navigation
+      getAlphabetArray: () => ['0-9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
+      
+      // Check if character matches letter filter
+      matchesLetter: (char, letter) => {
+        const upperChar = char.toUpperCase();
+        return letter === '0-9' ? /[0-9]/.test(upperChar) : upperChar === letter;
+      },
+      
+      // Format display text
+      formatDisplayText: (text) => text.replace(/_/g, ' ').toUpperCase(),
+      
+      // Clean JSON text (remove NaN values)
+      cleanJsonText: (text) => text.replace(/:\s*NaN/g, ': null'),
+      
+      // Create loading element
+      createLoadingElement: (text = 'Loading...') => {
+        const loading = document.createElement('div');
+        loading.innerHTML = `
+          <div style="text-align: center; padding: 30px;">
+            <div class="loading-spinner" style="margin-bottom: 15px;"></div>
+            <p>${text}</p>
+          </div>
+        `;
+        return loading;
+      },
+      
+      // Create error element
+      createErrorElement: (title, message) => {
+        const errorDiv = document.createElement('div');
+        errorDiv.innerHTML = `
+          <div class="error" style="margin: 20px 0;">
+            <h3>${title}</h3>
+            <p>${message}</p>
+          </div>
+        `;
+        return errorDiv;
+      }
+    };
 
-    // Navigation state
-    let navigationStack = [];
-    let currentView = 'root';
-
-    // GitHub Explorer Functions
-    async function loadFolders(path = "", containerId = "explorer", isRoot = false) {
-      try {
-        const url = `${apiBase}/${path}?ref=${branch}`;
-        console.log("Fetching:", url, "isRoot:", isRoot);
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Failed to fetch ${url}`);
-        const data = await res.json();
-        console.log("Fetched data:", data);
-        const container = document.getElementById(containerId);
+    // GitHub API Functions
+    const GitHubAPI = {
+      // Fetch folder contents
+      fetchFolderContents: async (path = "") => {
+        const url = `${API_BASE}/${path}?ref=${CONFIG.branch}`;
+        console.log("Fetching:", url);
         
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: Failed to fetch ${url}`);
+        }
+        
+        return await response.json();
+      },
+      
+      // Fetch and parse JSON file
+      fetchJsonFile: async (url) => {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const rawText = await response.text();
+        const cleanedText = Utils.cleanJsonText(rawText);
+        return JSON.parse(cleanedText);
+      }
+    };
+
+    // Navigation Functions
+    const Navigation = {
+      // Push current state to navigation stack
+      pushState: (view, content) => {
+        AppState.navigationStack.push({
+          view: AppState.currentView,
+          content: content || document.getElementById('explorer').innerHTML
+        });
+        AppState.currentView = view;
+      },
+      
+      // Go back to previous state
+      goBack: () => {
+        if (AppState.navigationStack.length > 0) {
+          const previousState = AppState.navigationStack.pop();
+          AppState.currentView = previousState.view;
+          document.getElementById('explorer').innerHTML = previousState.content;
+          Navigation.reattachEventListeners();
+        } else {
+          Navigation.goToRoot();
+        }
+      },
+      
+      // Go back to root
+      goToRoot: () => {
+        AppState.navigationStack = [];
+        AppState.currentView = 'root';
+        const container = document.getElementById('explorer');
+        container.innerHTML = '';
+        Explorer.loadFolders("", "explorer", true);
+      },
+      
+      // Re-attach event listeners after restoring content
+      reattachEventListeners: () => {
+        const container = document.getElementById('explorer');
+        
+        // Back buttons
+        container.querySelectorAll('.back-button').forEach(btn => {
+          btn.onclick = () => Navigation.goBack();
+        });
+        
+        // Movies button
+        const moviesBtn = container.querySelector('.explorer-button[data-action="movies"]');
+        if (moviesBtn) {
+          moviesBtn.onclick = () => UI.showAlphabetNavigation();
+        }
+        
+        // Alphabet buttons
+        Utils.getAlphabetArray().forEach(letter => {
+          const btn = container.querySelector(`[data-letter="${letter}"]`);
+          if (btn) {
+            btn.onclick = () => Explorer.showMoviesByLetter(letter);
+          }
+        });
+      }
+    };
+
+    // Explorer Functions
+    const Explorer = {
+      // Initialize the explorer
+      initialize: () => {
+        AppState.navigationStack = [];
+        AppState.currentView = 'root';
+        Explorer.loadFolders("", "explorer", true);
+      },
+      
+      // Load folders from GitHub
+      loadFolders: async (path = "", containerId = "explorer", isRoot = false) => {
+        const container = document.getElementById(containerId);
         if (!container) {
           console.error("Container not found:", containerId);
           return;
         }
 
-        let itemsAdded = 0;
-        
-        data.forEach(item => {
-          console.log("Processing item:", item.name, "type:", item.type, "isRoot:", isRoot);
-          
-          // Root: only show "movies"
-          if (isRoot && item.type === "dir" && item.name !== "movies") {
-            console.log("Skipping non-movies folder at root:", item.name);
-            return;
-          }
-          
-          // Show folders everywhere except movies root (which gets special treatment)
-          if (item.type === "dir") {
-            const btn = document.createElement("button");
-            btn.textContent = "📂 " + item.name;
-            btn.className = "explorer-button";
-            
-            if (item.name === "movies" && isRoot) {
-              console.log("Adding movies button with alphabet navigation");
-              btn.onclick = () => showAlphabetNavigation();
-            } else {
-              btn.onclick = () => {
-                let subContainer = document.getElementById(item.path);
-                if (!subContainer) {
-                  subContainer = document.createElement("div");
-                  subContainer.id = item.path;
-                  subContainer.classList.add("folder");
-                  container.appendChild(subContainer);
-                } else {
-                  // Clear existing content to prevent duplicates
-                  subContainer.innerHTML = '';
-                }
-                loadFolders(item.path, item.path, false);
-              };
+        try {
+          const data = await GitHubAPI.fetchFolderContents(path);
+          let itemsAdded = 0;
+
+          data.forEach(item => {
+            // Root: only show movies folder
+            if (isRoot && item.type === "dir" && item.name !== CONFIG.moviesFolder) {
+              return;
             }
-            container.appendChild(btn);
-            itemsAdded++;
-            console.log("Added folder button:", item.name);
-          }
-          
-          // Show .json files ONLY if inside movies/somefolder/someother
-          if (item.type === "file" && item.name.endsWith(".json")) {
-            const depth = path.split("/").length;
-            if (path.startsWith("movies/") && depth === 3) {
+
+            if (item.type === "dir") {
               const btn = document.createElement("button");
-              btn.textContent = "📄 " + item.name;
-              btn.className = "explorer-button file-button";
-              btn.onclick = () => openJsonViewer(item.download_url, item.name);
+              btn.textContent = "📂 " + item.name;
+              btn.className = "explorer-button";
+              
+              if (item.name === CONFIG.moviesFolder && isRoot) {
+                btn.setAttribute('data-action', 'movies');
+                btn.onclick = () => UI.showAlphabetNavigation();
+              } else {
+                btn.onclick = () => Explorer.expandFolder(item, container);
+              }
+              
               container.appendChild(btn);
               itemsAdded++;
-              console.log("Added file button:", item.name);
             }
-          }
-        });
-        
-        console.log("Total items added:", itemsAdded);
-        
-        if (itemsAdded === 0 && isRoot) {
-          // Show error message if no movies folder found
-          const errorDiv = document.createElement("div");
-          errorDiv.innerHTML = `
-            <div class="error" style="margin: 20px 0;">
-              <h3>No Movies Folder Found</h3>
-              <p>Could not find the 'movies' folder in the repository.</p>
-              <p>Repository: ${owner}/${repo}</p>
-              <p>Branch: ${branch}</p>
-            </div>
-          `;
-          container.appendChild(errorDiv);
-        }
-        
-      } catch (err) {
-        console.error("Error loading folders:", err);
-        const container = document.getElementById(containerId);
-        if (container) {
-          const errorDiv = document.createElement("div");
-          errorDiv.innerHTML = `
-            <div class="error" style="margin: 20px 0;">
-              <h3>Error Loading Repository</h3>
-              <p>${err.message}</p>
-              <p>Repository: ${owner}/${repo}</p>
-              <p>Branch: ${branch}</p>
-            </div>
-          `;
-          container.appendChild(errorDiv);
-        }
-      }
-    }
 
-    function showAlphabetNavigation() {
-      const container = document.getElementById('explorer');
-      
-      // Save current state to navigation stack
-      navigationStack.push({
-        view: currentView,
-        content: container.innerHTML
-      });
-      currentView = 'alphabet';
-      
-      // Clear container and show alphabet navigation
-      container.innerHTML = '';
-      
-      // Add back button
-      const backBtn = document.createElement("button");
-      backBtn.textContent = "← Back";
-      backBtn.className = "explorer-button back-button";
-      backBtn.onclick = () => goBack();
-      container.appendChild(backBtn);
-      
-      // Add title
-      const title = document.createElement("div");
-      title.style.cssText = `
-        font-size: 1.2em;
-        font-weight: bold;
-        margin: 20px 0;
-        color: #333;
-        text-align: center;
-      `;
-      title.textContent = "Select Starting Letter";
-      container.appendChild(title);
-      
-      // Create alphabet and number buttons
-      const letters = ['0-9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
-      
-      const buttonGrid = document.createElement("div");
-      buttonGrid.style.cssText = `
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-        gap: 10px;
-        margin: 20px 0;
-      `;
-      
-      letters.forEach(letter => {
-        const btn = document.createElement("button");
-        btn.textContent = letter;
-        btn.className = "explorer-button";
-        btn.style.cssText = `
-          min-width: 60px;
-          text-align: center;
-          font-weight: bold;
-          font-size: 1.1em;
-        `;
-        btn.onclick = () => showMoviesByLetter(letter);
-        buttonGrid.appendChild(btn);
-      });
-      
-      container.appendChild(buttonGrid);
-    }
-
-    async function showMoviesByLetter(letter) {
-      const container = document.getElementById('explorer');
-      
-      // Save current state to navigation stack
-      navigationStack.push({
-        view: currentView,
-        content: container.innerHTML
-      });
-      currentView = `letter-${letter}`;
-      
-      // Clear container and show loading
-      container.innerHTML = '';
-      
-      // Add back button
-      const backBtn = document.createElement("button");
-      backBtn.textContent = "← Back to Letters";
-      backBtn.className = "explorer-button back-button";
-      backBtn.onclick = () => goBack();
-      container.appendChild(backBtn);
-      
-      // Add title
-      const title = document.createElement("div");
-      title.style.cssText = `
-        font-size: 1.2em;
-        font-weight: bold;
-        margin: 20px 0;
-        color: #333;
-        text-align: center;
-      `;
-      title.textContent = `Movies starting with "${letter}"`;
-      container.appendChild(title);
-      
-      // Show loading
-      const loading = document.createElement("div");
-      loading.innerHTML = `
-        <div style="text-align: center; padding: 30px;">
-          <div class="loading-spinner" style="margin-bottom: 15px;"></div>
-          <p>Loading movies...</p>
-        </div>
-      `;
-      container.appendChild(loading);
-      
-      try {
-        // Fetch movies folder contents
-        const url = `${apiBase}/movies?ref=${branch}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Failed to fetch movies`);
-        const data = await res.json();
-        
-        // Remove loading
-        container.removeChild(loading);
-        
-        // Filter folders by starting letter
-        const filteredFolders = data.filter(item => {
-          if (item.type !== "dir") return false;
-          
-          const firstChar = item.name.charAt(0).toUpperCase();
-          if (letter === '0-9') {
-            return /[0-9]/.test(firstChar);
-          } else {
-            return firstChar === letter;
-          }
-        });
-        
-        if (filteredFolders.length === 0) {
-          const noData = document.createElement("div");
-          noData.style.cssText = `
-            text-align: center;
-            padding: 30px;
-            color: #666;
-            font-style: italic;
-          `;
-          noData.textContent = `No movies found starting with "${letter}"`;
-          container.appendChild(noData);
-        } else {
-          // Show filtered folders
-          filteredFolders.forEach(item => {
-            const btn = document.createElement("button");
-            btn.textContent = "📂 " + item.name;
-            btn.className = "explorer-button";
-            btn.onclick = () => {
-              // Navigate to the movie folder and load its contents
-              showMovieFolder(item.path, item.name);
-            };
-            container.appendChild(btn);
+            // Show .json files only at the correct depth
+            if (item.type === "file" && item.name.endsWith(".json")) {
+              const depth = path.split("/").filter(p => p).length;
+              if (path.startsWith(`${CONFIG.moviesFolder}/`) && depth >= 2) {
+                const btn = document.createElement("button");
+                btn.textContent = "📄 " + item.name;
+                btn.className = "explorer-button file-button";
+                btn.onclick = () => JsonViewer.openJsonViewer(item.download_url, item.name);
+                container.appendChild(btn);
+                itemsAdded++;
+              }
+            }
           });
-        }
-        
-      } catch (err) {
-        console.error("Error loading movies by letter:", err);
-        container.removeChild(loading);
-        
-        const errorDiv = document.createElement("div");
-        errorDiv.innerHTML = `
-          <div class="error" style="margin: 20px 0;">
-            <h3>Error Loading Movies</h3>
-            <p>${err.message}</p>
-          </div>
-        `;
-        container.appendChild(errorDiv);
-      }
-    }
 
-    async function showMovieFolder(path, folderName) {
-      const container = document.getElementById('explorer');
-      
-      // Save current state to navigation stack
-      navigationStack.push({
-        view: currentView,
-        content: container.innerHTML
-      });
-      currentView = `movie-${path}`;
-      
-      // Clear container and show loading
-      container.innerHTML = '';
-      
-      // Add back button
-      const backBtn = document.createElement("button");
-      backBtn.textContent = "← Back to Movies";
-      backBtn.className = "explorer-button back-button";
-      backBtn.onclick = () => goBack();
-      container.appendChild(backBtn);
-      
-      // Add title
-      const title = document.createElement("div");
-      title.style.cssText = `
-        font-size: 1.2em;
-        font-weight: bold;
-        margin: 20px 0;
-        color: #333;
-        text-align: center;
-      `;
-      title.textContent = folderName;
-      container.appendChild(title);
-      
-      // Show loading
-      const loading = document.createElement("div");
-      loading.innerHTML = `
-        <div style="text-align: center; padding: 30px;">
-          <div class="loading-spinner" style="margin-bottom: 15px;"></div>
-          <p>Loading folder contents...</p>
-        </div>
-      `;
-      container.appendChild(loading);
-      
-      try {
-        // Fetch folder contents
-        const url = `${apiBase}/${path}?ref=${branch}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Failed to fetch ${path}`);
-        const data = await res.json();
-        
-        // Remove loading
-        container.removeChild(loading);
-        
-        // Show folder contents
-        data.forEach(item => {
-          if (item.type === "dir") {
-            const btn = document.createElement("button");
-            btn.textContent = "📂 " + item.name;
-            btn.className = "explorer-button";
-            btn.onclick = () => showSubFolder(item.path, item.name);
-            container.appendChild(btn);
+          if (itemsAdded === 0 && isRoot) {
+            const error = Utils.createErrorElement(
+              "No Movies Folder Found",
+              `Could not find the '${CONFIG.moviesFolder}' folder in ${CONFIG.owner}/${CONFIG.repo}`
+            );
+            container.appendChild(error);
           }
-          
-          // Show .json files if at the right depth level
-          if (item.type === "file" && item.name.endsWith(".json")) {
-            const depth = path.split("/").length;
-            if (depth >= 2) { // movies/folder/subfolder level
-              const btn = document.createElement("button");
-              btn.textContent = "📄 " + item.name;
-              btn.className = "explorer-button file-button";
-              btn.onclick = () => openJsonViewer(item.download_url, item.name);
+
+        } catch (err) {
+          console.error("Error loading folders:", err);
+          const error = Utils.createErrorElement("Error Loading Repository", err.message);
+          container.appendChild(error);
+        }
+      },
+      
+      // Expand folder contents
+      expandFolder: (item, container) => {
+        let subContainer = document.getElementById(item.path);
+        if (!subContainer) {
+          subContainer = document.createElement("div");
+          subContainer.id = item.path;
+          subContainer.classList.add("folder");
+          container.appendChild(subContainer);
+        } else {
+          subContainer.innerHTML = '';
+        }
+        Explorer.loadFolders(item.path, item.path, false);
+      },
+      
+      // Show movies filtered by starting letter
+      showMoviesByLetter: async (letter) => {
+        const container = document.getElementById('explorer');
+        Navigation.pushState(`letter-${letter}`);
+        
+        UI.clearAndShowHeader(container, `← Back to Letters`, `Movies starting with "${letter}"`);
+        
+        const loading = Utils.createLoadingElement('Loading movies...');
+        container.appendChild(loading);
+
+        try {
+          const data = await GitHubAPI.fetchFolderContents(CONFIG.moviesFolder);
+          container.removeChild(loading);
+
+          const filteredFolders = data.filter(item => {
+            if (item.type !== "dir") return false;
+            return Utils.matchesLetter(item.name.charAt(0), letter);
+          });
+
+          if (filteredFolders.length === 0) {
+            UI.showNoData(container, `No movies found starting with "${letter}"`);
+          } else {
+            filteredFolders.forEach(item => {
+              const btn = UI.createButton("📂 " + item.name, "explorer-button");
+              btn.onclick = () => Explorer.showMovieFolder(item.path, item.name);
+              container.appendChild(btn);
+            });
+          }
+
+        } catch (err) {
+          console.error("Error loading movies by letter:", err);
+          container.removeChild(loading);
+          const error = Utils.createErrorElement("Error Loading Movies", err.message);
+          container.appendChild(error);
+        }
+      },
+      
+      // Show contents of a movie folder
+      showMovieFolder: async (path, folderName) => {
+        const container = document.getElementById('explorer');
+        Navigation.pushState(`movie-${path}`);
+        
+        UI.clearAndShowHeader(container, `← Back to Movies`, folderName);
+        
+        const loading = Utils.createLoadingElement('Loading folder contents...');
+        container.appendChild(loading);
+
+        try {
+          const data = await GitHubAPI.fetchFolderContents(path);
+          container.removeChild(loading);
+
+          if (data.length === 0) {
+            UI.showNoData(container, "This folder is empty");
+            return;
+          }
+
+          data.forEach(item => {
+            if (item.type === "dir") {
+              const btn = UI.createButton("📂 " + item.name, "explorer-button");
+              btn.onclick = () => Explorer.showSubFolder(item.path, item.name);
+              container.appendChild(btn);
+            } else if (item.type === "file" && item.name.endsWith(".json")) {
+              const btn = UI.createButton("📄 " + item.name, "explorer-button file-button");
+              btn.onclick = () => JsonViewer.openJsonViewer(item.download_url, item.name);
               container.appendChild(btn);
             }
+          });
+
+        } catch (err) {
+          console.error("Error loading movie folder:", err);
+          container.removeChild(loading);
+          const error = Utils.createErrorElement("Error Loading Folder", err.message);
+          container.appendChild(error);
+        }
+      },
+      
+      // Show contents of a subfolder
+      showSubFolder: async (path, folderName) => {
+        const container = document.getElementById('explorer');
+        Navigation.pushState(`subfolder-${path}`);
+        
+        UI.clearAndShowHeader(container, `← Back`, folderName);
+        
+        const loading = Utils.createLoadingElement('Loading folder contents...');
+        container.appendChild(loading);
+
+        try {
+          const data = await GitHubAPI.fetchFolderContents(path);
+          container.removeChild(loading);
+
+          const jsonFiles = data.filter(item => item.type === "file" && item.name.endsWith(".json"));
+          
+          if (jsonFiles.length === 0) {
+            UI.showNoData(container, "No JSON files found in this folder");
+          } else {
+            jsonFiles.forEach(item => {
+              const btn = UI.createButton("📄 " + item.name, "explorer-button file-button");
+              btn.onclick = () => JsonViewer.openJsonViewer(item.download_url, item.name);
+              container.appendChild(btn);
+            });
           }
+
+        } catch (err) {
+          console.error("Error loading subfolder:", err);
+          container.removeChild(loading);
+          const error = Utils.createErrorElement("Error Loading Folder", err.message);
+          container.appendChild(error);
+        }
+      }
+    };
+
+    // UI Helper Functions
+    const UI = {
+      // Clear container and show header with back button and title
+      clearAndShowHeader: (container, backText, title) => {
+        container.innerHTML = '';
+        
+        const backBtn = UI.createButton(backText, "explorer-button back-button");
+        backBtn.onclick = () => Navigation.goBack();
+        container.appendChild(backBtn);
+        
+        if (title) {
+          const titleDiv = document.createElement("div");
+          titleDiv.className = "section-title";
+          titleDiv.textContent = title;
+          container.appendChild(titleDiv);
+        }
+      },
+      
+      // Create button element
+      createButton: (text, className = "explorer-button") => {
+        const btn = document.createElement("button");
+        btn.textContent = text;
+        btn.className = className;
+        return btn;
+      },
+      
+      // Show no data message
+      showNoData: (container, message) => {
+        const noData = document.createElement("div");
+        noData.style.cssText = `
+          text-align: center;
+          padding: 30px;
+          color: #666;
+          font-style: italic;
+        `;
+        noData.textContent = message;
+        container.appendChild(noData);
+      },
+      
+      // Show alphabet navigation
+      showAlphabetNavigation: () => {
+        const container = document.getElementById('explorer');
+        Navigation.pushState('alphabet');
+        
+        UI.clearAndShowHeader(container, "← Back", "Select Starting Letter");
+        
+        const buttonGrid = document.createElement("div");
+        buttonGrid.className = "alphabet-grid";
+        
+        Utils.getAlphabetArray().forEach(letter => {
+          const btn = UI.createButton(letter, "explorer-button alphabet-button");
+          btn.setAttribute('data-letter', letter);
+          btn.onclick = () => Explorer.showMoviesByLetter(letter);
+          buttonGrid.appendChild(btn);
         });
         
-        if (data.length === 0) {
-          const noData = document.createElement("div");
-          noData.style.cssText = `
-            text-align: center;
-            padding: 30px;
-            color: #666;
-            font-style: italic;
-          `;
-          noData.textContent = "This folder is empty";
-          container.appendChild(noData);
-        }
-        
-      } catch (err) {
-        console.error("Error loading movie folder:", err);
-        container.removeChild(loading);
-        
-        const errorDiv = document.createElement("div");
-        errorDiv.innerHTML = `
-          <div class="error" style="margin: 20px 0;">
-            <h3>Error Loading Folder</h3>
-            <p>${err.message}</p>
-          </div>
-        `;
-        container.appendChild(errorDiv);
+        container.appendChild(buttonGrid);
       }
-    }
-
-    async function showSubFolder(path, folderName) {
-      const container = document.getElementById('explorer');
-      
-      // Save current state to navigation stack
-      navigationStack.push({
-        view: currentView,
-        content: container.innerHTML
-      });
-      currentView = `subfolder-${path}`;
-      
-      // Clear container
-      container.innerHTML = '';
-      
-      // Add back button
-      const backBtn = document.createElement("button");
-      backBtn.textContent = "← Back";
-      backBtn.className = "explorer-button back-button";
-      backBtn.onclick = () => goBack();
-      container.appendChild(backBtn);
-      
-      // Add title
-      const title = document.createElement("div");
-      title.style.cssText = `
-        font-size: 1.2em;
-        font-weight: bold;
-        margin: 20px 0;
-        color: #333;
-        text-align: center;
-      `;
-      title.textContent = folderName;
-      container.appendChild(title);
-      
-      // Show loading
-      const loading = document.createElement("div");
-      loading.innerHTML = `
-        <div style="text-align: center; padding: 30px;">
-          <div class="loading-spinner" style="margin-bottom: 15px;"></div>
-          <p>Loading folder contents...</p>
-        </div>
-      `;
-      container.appendChild(loading);
-      
-      try {
-        // Fetch folder contents
-        const url = `${apiBase}/${path}?ref=${branch}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Failed to fetch ${path}`);
-        const data = await res.json();
-        
-        // Remove loading
-        container.removeChild(loading);
-        
-        // Show folder contents
-        data.forEach(item => {
-          if (item.type === "file" && item.name.endsWith(".json")) {
-            const btn = document.createElement("button");
-            btn.textContent = "📄 " + item.name;
-            btn.className = "explorer-button file-button";
-            btn.onclick = () => openJsonViewer(item.download_url, item.name);
-            container.appendChild(btn);
-          }
-        });
-        
-        const jsonFiles = data.filter(item => item.type === "file" && item.name.endsWith(".json"));
-        if (jsonFiles.length === 0) {
-          const noData = document.createElement("div");
-          noData.style.cssText = `
-            text-align: center;
-            padding: 30px;
-            color: #666;
-            font-style: italic;
-          `;
-          noData.textContent = "No JSON files found in this folder";
-          container.appendChild(noData);
-        }
-        
-      } catch (err) {
-        console.error("Error loading subfolder:", err);
-        container.removeChild(loading);
-        
-        const errorDiv = document.createElement("div");
-        errorDiv.innerHTML = `
-          <div class="error" style="margin: 20px 0;">
-            <h3>Error Loading Folder</h3>
-            <p>${err.message}</p>
-          </div>
-        `;
-        container.appendChild(errorDiv);
-      }
-    }
-
-    function goBack() {
-      if (navigationStack.length > 0) {
-        const previousState = navigationStack.pop();
-        currentView = previousState.view;
-        document.getElementById('explorer').innerHTML = previousState.content;
-        
-        // Re-attach event listeners for the restored content
-        reattachEventListeners();
-      } else if (currentView !== 'root') {
-        // Fallback: go back to root if navigation stack is empty
-        goBackToRoot();
-      }
-    }
-
-    function goBackToRoot() {
-      navigationStack = [];
-      currentView = 'root';
-      const container = document.getElementById('explorer');
-      container.innerHTML = '';
-      loadFolders("", "explorer", true);
-    }
-
-    function reattachEventListeners() {
-      // Re-attach event listeners to restored buttons
-      const container = document.getElementById('explorer');
-      
-      // Handle back buttons
-      const backButtons = container.querySelectorAll('.back-button');
-      backButtons.forEach(btn => {
-        btn.onclick = () => goBack();
-      });
-      
-      // Handle movies button at root
-      const buttons = container.querySelectorAll('.explorer-button');
-      buttons.forEach(btn => {
-        const text = btn.textContent.trim();
-        
-        if (text === '📂 movies') {
-          btn.onclick = () => showAlphabetNavigation();
-        }
-        // Check if it's an alphabet/number button (single characters or 0-9)
-        else if (/^[A-Z]$|^0-9$/.test(text)) {
-          btn.onclick = () => showMoviesByLetter(text);
-        }
-        // Handle movie folder buttons (this is a simplified restoration)
-        else if (text.startsWith('📂 ') && currentView.startsWith('letter-')) {
-          const folderName = text.replace('📂 ', '');
-          // Extract the path from the current view context
-          // This is a limitation - we'd need to store more context for full restoration
-        }
-      });
-    }
+    };
 
     // JSON Viewer Functions
-    function showExplorer() {
-      document.getElementById('explorerSection').classList.remove('hidden');
-      document.getElementById('jsonViewerSection').classList.remove('show');
-      resetJsonViewer();
-    }
+    const JsonViewer = {
+      // Show explorer section
+      showExplorer: () => {
+        document.getElementById('explorerSection').classList.remove('hidden');
+        document.getElementById('jsonViewerSection').classList.remove('show');
+        JsonViewer.reset();
+      },
 
-    function showJsonViewer() {
-      document.getElementById('explorerSection').classList.add('hidden');
-      document.getElementById('jsonViewerSection').classList.add('show');
-    }
+      // Show JSON viewer section
+      show: () => {
+        document.getElementById('explorerSection').classList.add('hidden');
+        document.getElementById('jsonViewerSection').classList.add('show');
+      },
 
-    function resetJsonViewer() {
-      document.getElementById('loadingSection').style.display = 'none';
-      document.getElementById('errorSection').style.display = 'none';
-      document.getElementById('buttonsContainer').classList.remove('show');
-      document.getElementById('dataDisplay').classList.remove('show');
-      document.getElementById('filterSection').classList.remove('show');
-      document.getElementById('noData').style.display = 'block';
-      document.getElementById('dataTable').style.display = 'none';
-    }
+      // Reset JSON viewer state
+      reset: () => {
+        document.getElementById('loadingSection').style.display = 'none';
+        document.getElementById('errorSection').style.display = 'none';
+        document.getElementById('buttonsContainer').classList.remove('show');
+        document.getElementById('dataDisplay').classList.remove('show');
+        document.getElementById('filterSection').classList.remove('show');
+        document.getElementById('noData').style.display = 'block';
+        document.getElementById('dataTable').style.display = 'none';
+      },
 
-    async function openJsonViewer(url, filename) {
-      showJsonViewer();
-      
-      const loadingSection = document.getElementById('loadingSection');
-      const errorSection = document.getElementById('errorSection');
-      const buttonsContainer = document.getElementById('buttonsContainer');
-      const dataDisplay = document.getElementById('dataDisplay');
-
-      // Show loading
-      loadingSection.style.display = 'block';
-      errorSection.style.display = 'none';
-      buttonsContainer.classList.remove('show');
-      dataDisplay.classList.remove('show');
-
-      try {
-        const response = await fetch(url);
+      // Open JSON viewer with file URL
+      openJsonViewer: async (url, filename) => {
+        JsonViewer.show();
         
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
+        const loadingSection = document.getElementById('loadingSection');
+        const errorSection = document.getElementById('errorSection');
+        const buttonsContainer = document.getElementById('buttonsContainer');
+        const dataDisplay = document.getElementById('dataDisplay');
 
-        const rawText = await response.text();
-        const cleanedText = rawText.replace(/:\s*NaN/g, ': null');
-        jsonData = JSON.parse(cleanedText);
-        
-        if (!jsonData || typeof jsonData !== 'object') {
-          throw new Error('Invalid JSON data structure');
-        }
+        // Show loading
+        loadingSection.style.display = 'block';
+        errorSection.style.display = 'none';
+        buttonsContainer.classList.remove('show');
+        dataDisplay.classList.remove('show');
 
-        const hasArrayData = Object.values(jsonData).some(value => Array.isArray(value));
-        if (!hasArrayData) {
-          throw new Error('No array data found in JSON file');
-        }
-
-        // Success - show the interface
-        loadingSection.style.display = 'none';
-        buttonsContainer.classList.add('show');
-        dataDisplay.classList.add('show');
-
-        // Update header title
-        document.querySelector('.header p').textContent = `Viewing: ${filename}`;
-
-        createButtons();
-        resetDataDisplay();
-
-      } catch (error) {
-        console.error('Error loading JSON:', error);
-        showJsonError(error);
-      }
-    }
-
-    function showJsonError(error) {
-      const loadingSection = document.getElementById('loadingSection');
-      const errorSection = document.getElementById('errorSection');
-
-      loadingSection.style.display = 'none';
-
-      let errorMessage = '';
-      if (error.name === 'SyntaxError') {
-        errorMessage = `
-          <div class="error">
-            <h3>📄 Invalid JSON Format</h3>
-            <p>The JSON file contains invalid syntax.</p>
-          </div>
-        `;
-      } else {
-        errorMessage = `
-          <div class="error">
-            <h3>❌ Error Loading Data</h3>
-            <p>${error.message}</p>
-          </div>
-        `;
-      }
-
-      errorSection.innerHTML = errorMessage;
-      errorSection.style.display = 'block';
-    }
-
-    function createButtons() {
-      const buttonGrid = document.getElementById('buttonGrid');
-      buttonGrid.innerHTML = '';
-      
-      Object.keys(jsonData).forEach(key => {
-        if (Array.isArray(jsonData[key])) {
-          const button = document.createElement('button');
-          button.className = 'data-button';
+        try {
+          AppState.jsonData = await GitHubAPI.fetchJsonFile(url);
           
-          const title = document.createElement('div');
-          title.textContent = key.replace(/_/g, ' ').toUpperCase();
-          
-          const count = document.createElement('span');
-          count.className = 'record-count';
-          count.textContent = `${jsonData[key].length} records`;
-          
-          button.appendChild(title);
-          button.appendChild(count);
-          button.addEventListener('click', () => showData(key));
-          buttonGrid.appendChild(button);
-        }
-      });
-    }
-
-    function resetDataDisplay() {
-      document.getElementById('filterSection').classList.remove('show');
-      document.getElementById('noData').style.display = 'block';
-      document.getElementById('dataTable').style.display = 'none';
-    }
-
-    function showData(key) {
-      // Update active button
-      document.querySelectorAll('.data-button').forEach(btn => {
-        btn.classList.remove('active');
-      });
-      event.target.closest('.data-button').classList.add('active');
-
-      currentDataKey = key;
-      const data = jsonData[key];
-      
-      if (!Array.isArray(data) || data.length === 0) {
-        showNoData(key);
-        return;
-      }
-
-      // Store original data and reset filters
-      originalData = [...data];
-      filteredData = [...data];
-      currentSort = { column: null, direction: 'asc' };
-
-      // Update title and count
-      document.getElementById('dataTitle').textContent = key.replace(/_/g, ' ').toUpperCase();
-      document.getElementById('dataCount').textContent = `${data.length} records`;
-
-      // Show filter section
-      document.getElementById('filterSection').classList.add('show');
-
-      // Setup column filter options
-      setupColumnFilter(data);
-
-      // Show table
-      document.getElementById('noData').style.display = 'none';
-      document.getElementById('dataTable').style.display = 'table';
-
-      // Create table
-      createTable(filteredData);
-    }
-
-    function showNoData(key) {
-      document.getElementById('dataTitle').textContent = key.replace(/_/g, ' ').toUpperCase();
-      document.getElementById('dataCount').textContent = '0 records';
-      document.getElementById('filterSection').classList.remove('show');
-      
-      const noData = document.getElementById('noData');
-      noData.style.display = 'block';
-      noData.textContent = 'No data available for this table';
-      
-      document.getElementById('dataTable').style.display = 'none';
-    }
-
-    function createTable(data) {
-      const tableHead = document.getElementById('tableHead');
-      const tableBody = document.getElementById('tableBody');
-      
-      // Clear previous content
-      tableHead.innerHTML = '';
-      tableBody.innerHTML = '';
-
-      if (data.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="100%" style="text-align: center; padding: 30px; color: #666;">No records match your filters</td></tr>';
-        return;
-      }
-
-      // Get all unique keys from all objects
-      const allKeys = new Set();
-      data.forEach(item => {
-        if (typeof item === 'object' && item !== null) {
-          Object.keys(item).forEach(key => allKeys.add(key));
-        }
-      });
-
-      const keys = Array.from(allKeys);
-
-      // Create header
-      const headerRow = document.createElement('tr');
-      keys.forEach(key => {
-        const th = document.createElement('th');
-        th.textContent = key.replace(/_/g, ' ').toUpperCase();
-        th.onclick = () => sortTable(key);
-        headerRow.appendChild(th);
-      });
-      tableHead.appendChild(headerRow);
-
-      // Create body rows
-      data.forEach(item => {
-        const row = document.createElement('tr');
-        keys.forEach(key => {
-          const td = document.createElement('td');
-          let value = item[key];
-          
-          if (value === null || value === undefined) {
-            td.textContent = '-';
-            td.style.color = '#999';
-          } else if (typeof value === 'number') {
-            td.textContent = value.toLocaleString();
-          } else if (typeof value === 'object') {
-            td.textContent = JSON.stringify(value);
-          } else {
-            td.textContent = String(value);
+          if (!AppState.jsonData || typeof AppState.jsonData !== 'object') {
+            throw new Error('Invalid JSON data structure');
           }
-          
-          row.appendChild(td);
-        });
-        tableBody.appendChild(row);
-      });
-    }
 
-    function setupColumnFilter(data) {
-      const columnFilter = document.getElementById('columnFilter');
-      columnFilter.innerHTML = '<option value="">All Columns</option>';
-      
-      if (data.length === 0) return;
+          const hasArrayData = Object.values(AppState.jsonData).some(value => Array.isArray(value));
+          if (!hasArrayData) {
+            throw new Error('No array data found in JSON file');
+          }
 
-      const allKeys = new Set();
-      data.forEach(item => {
-        if (typeof item === 'object' && item !== null) {
-          Object.keys(item).forEach(key => allKeys.add(key));
+          // Success - show the interface
+          loadingSection.style.display = 'none';
+          buttonsContainer.classList.add('show');
+          dataDisplay.classList.add('show');
+
+          // Update header title
+          document.querySelector('.header p').textContent = `Viewing: ${filename}`;
+
+          JsonViewer.createDataButtons();
+          JsonViewer.resetDataDisplay();
+
+        } catch (error) {
+          console.error('Error loading JSON:', error);
+          JsonViewer.showError(error);
         }
-      });
+      },
 
-      Array.from(allKeys).sort().forEach(key => {
-        const option = document.createElement('option');
-        option.value = key;
-        option.textContent = key.replace(/_/g, ' ').toUpperCase();
-        columnFilter.appendChild(option);
-      });
-    }
+      // Show error message
+      showError: (error) => {
+        const loadingSection = document.getElementById('loadingSection');
+        const errorSection = document.getElementById('errorSection');
 
-    function sortTable(column) {
-      if (currentSort.column === column) {
-        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-      } else {
-        currentSort.column = column;
-        currentSort.direction = 'asc';
+        loadingSection.style.display = 'none';
+
+        let errorMessage = '';
+        if (error.name === 'SyntaxError') {
+          errorMessage = `
+            <div class="error">
+              <h3>📄 Invalid JSON Format</h3>
+              <p>The JSON file contains invalid syntax.</p>
+            </div>
+          `;
+        } else {
+          errorMessage = `
+            <div class="error">
+              <h3>❌ Error Loading Data</h3>
+              <p>${error.message}</p>
+            </div>
+          `;
+        }
+
+        errorSection.innerHTML = errorMessage;
+        errorSection.style.display = 'block';
+      },
+
+      // Create data table buttons
+      createDataButtons: () => {
+        const buttonGrid = document.getElementById('buttonGrid');
+        buttonGrid.innerHTML = '';
+        
+        Object.keys(AppState.jsonData).forEach(key => {
+          if (Array.isArray(AppState.jsonData[key])) {
+            const button = document.createElement('button');
+            button.className = 'data-button';
+            
+            const title = document.createElement('div');
+            title.textContent = Utils.formatDisplayText(key);
+            
+            const count = document.createElement('span');
+            count.className = 'record-count';
+            count.textContent = `${AppState.jsonData[key].length} records`;
+            
+            button.appendChild(title);
+            button.appendChild(count);
+            button.addEventListener('click', () => DataTable.showData(key));
+            buttonGrid.appendChild(button);
+          }
+        });
+      },
+
+      // Reset data display
+      resetDataDisplay: () => {
+        document.getElementById('filterSection').classList.remove('show');
+        document.getElementById('noData').style.display = 'block';
+        document.getElementById('dataTable').style.display = 'none';
       }
+    };
 
-      filteredData.sort((a, b) => {
-        let aVal = a[column];
-        let bVal = b[column];
+    // Data Table Functions
+    const DataTable = {
+      // Show data for selected key
+      showData: (key) => {
+        // Update active button
+        document.querySelectorAll('.data-button').forEach(btn => {
+          btn.classList.remove('active');
+        });
+        event.target.closest('.data-button').classList.add('active');
 
-        if (aVal == null && bVal == null) return 0;
-        if (aVal == null) return 1;
-        if (bVal == null) return -1;
+        AppState.currentDataKey = key;
+        const data = AppState.jsonData[key];
+        
+        if (!Array.isArray(data) || data.length === 0) {
+          DataTable.showNoData(key);
+          return;
+        }
 
-        if (typeof aVal === 'string') aVal = aVal.toLowerCase();
-        if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+        // Store original data and reset filters
+        AppState.originalData = [...data];
+        AppState.filteredData = [...data];
+        AppState.currentSort = { column: null, direction: 'asc' };
 
-        let comparison = 0;
-        if (aVal > bVal) comparison = 1;
-        else if (aVal < bVal) comparison = -1;
+        // Update title and count
+        document.getElementById('dataTitle').textContent = Utils.formatDisplayText(key);
+        document.getElementById('dataCount').textContent = `${data.length} records`;
 
-        return currentSort.direction === 'asc' ? comparison : -comparison;
-      });
+        // Show filter section
+        document.getElementById('filterSection').classList.add('show');
 
-      createTable(filteredData);
+        // Setup column filter options
+        DataTable.setupColumnFilter(data);
+
+        // Show table
+        document.getElementById('noData').style.display = 'none';
+        document.getElementById('dataTable').style.display = 'table';
+
+        // Create table
+        DataTable.createTable(AppState.filteredData);
+      },
+
+      // Show no data message
+      showNoData: (key) => {
+        document.getElementById('dataTitle').textContent = Utils.formatDisplayText(key);
+        document.getElementById('dataCount').textContent = '0 records';
+        document.getElementById('filterSection').classList.remove('show');
+        
+        const noData = document.getElementById('noData');
+        noData.style.display = 'block';
+        noData.textContent = 'No data available for this table';
+        
+        document.getElementById('dataTable').style.display = 'none';
+      },
+
+      // Create HTML table from data
+      createTable: (data) => {
+        const tableHead = document.getElementById('tableHead');
+        const tableBody = document.getElementById('tableBody');
+        
+        // Clear previous content
+        tableHead.innerHTML = '';
+        tableBody.innerHTML = '';
+
+        if (data.length === 0) {
+          tableBody.innerHTML = '<tr><td colspan="100%" style="text-align: center; padding: 30px; color: #666;">No records match your filters</td></tr>';
+          return;
+        }
+
+        // Get all unique keys from all objects
+        const allKeys = new Set();
+        data.forEach(item => {
+          if (typeof item === 'object' && item !== null) {
+            Object.keys(item).forEach(key => allKeys.add(key));
+          }
+        });
+
+        const keys = Array.from(allKeys);
+
+        // Create header
+        const headerRow = document.createElement('tr');
+        keys.forEach(key => {
+          const th = document.createElement('th');
+          th.textContent = Utils.formatDisplayText(key);
+          th.onclick = () => DataTable.sortTable(key);
+          headerRow.appendChild(th);
+        });
+        tableHead.appendChild(headerRow);
+
+        // Create body rows
+        data.forEach(item => {
+          const row = document.createElement('tr');
+          keys.forEach(key => {
+            const td = document.createElement('td');
+            let value = item[key];
+            
+            if (value === null || value === undefined) {
+              td.textContent = '-';
+              td.style.color = '#999';
+            } else if (typeof value === 'number') {
+              td.textContent = value.toLocaleString();
+            } else if (typeof value === 'object') {
+              td.textContent = JSON.stringify(value);
+            } else {
+              td.textContent = String(value);
+            }
+            
+            row.appendChild(td);
+          });
+          tableBody.appendChild(row);
+        });
+      },
+
+      // Setup column filter dropdown
+      setupColumnFilter: (data) => {
+        const columnFilter = document.getElementById('columnFilter');
+        columnFilter.innerHTML = '<option value="">All Columns</option>';
+        
+        if (data.length === 0) return;
+
+        const allKeys = new Set();
+        data.forEach(item => {
+          if (typeof item === 'object' && item !== null) {
+            Object.keys(item).forEach(key => allKeys.add(key));
+          }
+        });
+
+        Array.from(allKeys).sort().forEach(key => {
+          const option = document.createElement('option');
+          option.value = key;
+          option.textContent = Utils.formatDisplayText(key);
+          columnFilter.appendChild(option);
+        });
+      },
+
+      // Sort table by column
+      sortTable: (column) => {
+        if (AppState.currentSort.column === column) {
+          AppState.currentSort.direction = AppState.currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+          AppState.currentSort.column = column;
+          AppState.currentSort.direction = 'asc';
+        }
+
+        AppState.filteredData.sort((a, b) => {
+          let aVal = a[column];
+          let bVal = b[column];
+
+          if (aVal == null && bVal == null) return 0;
+          if (aVal == null) return 1;
+          if (bVal == null) return -1;
+
+          if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+          if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+
+          let comparison = 0;
+          if (aVal > bVal) comparison = 1;
+          else if (aVal < bVal) comparison = -1;
+
+          return AppState.currentSort.direction === 'asc' ? comparison : -comparison;
+        });
+
+        DataTable.createTable(AppState.filteredData);
+      }
+    };
+
+    // Filter Functions
+    const Filters = {
+      // Apply current filters
+      apply: () => {
+        const searchInput = document.getElementById('searchInput').value.toLowerCase();
+        const columnFilter = document.getElementById('columnFilter').value;
+
+        AppState.filteredData = AppState.originalData.filter(item => {
+          let matchesSearch = true;
+          if (searchInput) {
+            if (columnFilter) {
+              const value = item[columnFilter];
+              matchesSearch = value != null && String(value).toLowerCase().includes(searchInput);
+            } else {
+              matchesSearch = Object.values(item).some(value => 
+                value != null && String(value).toLowerCase().includes(searchInput)
+              );
+            }
+          }
+          return matchesSearch;
+        });
+
+        if (AppState.currentSort.column) {
+          DataTable.sortTable(AppState.currentSort.column);
+        } else {
+          DataTable.createTable(AppState.filteredData);
+        }
+
+        document.getElementById('dataCount').textContent = `${AppState.filteredData.length} records`;
+      },
+
+      // Clear all filters
+      clear: () => {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('columnFilter').value = '';
+        AppState.currentSort = { column: null, direction: 'asc' };
+        
+        AppState.filteredData = [...AppState.originalData];
+        DataTable.createTable(AppState.filteredData);
+        document.getElementById('dataCount').textContent = `${AppState.filteredData.length} records`;
+      }
+    };
+
+    // Global Functions (for inline event handlers)
+    function showExplorer() {
+      JsonViewer.showExplorer();
     }
 
     function applyFilters() {
-      const searchInput = document.getElementById('searchInput').value.toLowerCase();
-      const columnFilter = document.getElementById('columnFilter').value;
-
-      filteredData = originalData.filter(item => {
-        let matchesSearch = true;
-        if (searchInput) {
-          if (columnFilter) {
-            const value = item[columnFilter];
-            matchesSearch = value != null && String(value).toLowerCase().includes(searchInput);
-          } else {
-            matchesSearch = Object.values(item).some(value => 
-              value != null && String(value).toLowerCase().includes(searchInput)
-            );
-          }
-        }
-        return matchesSearch;
-      });
-
-      if (currentSort.column) {
-        sortTable(currentSort.column);
-      } else {
-        createTable(filteredData);
-      }
-
-      document.getElementById('dataCount').textContent = `${filteredData.length} records`;
+      Filters.apply();
     }
 
     function clearFilters() {
-      document.getElementById('searchInput').value = '';
-      document.getElementById('columnFilter').value = '';
-      currentSort = { column: null, direction: 'asc' };
-      
-      filteredData = [...originalData];
-      createTable(filteredData);
-      document.getElementById('dataCount').textContent = `${filteredData.length} records`;
+      Filters.clear();
     }
+
+    // Initialize Application
+    document.addEventListener('DOMContentLoaded', function() {
+      Explorer.initialize();
+    });
   </script>
 </body>
 </html>
