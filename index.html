@@ -1,165 +1,62 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>GitHub Repo Explorer</title>
-  <style>
-    body {
-      font-family: "Segoe UI", Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      background: linear-gradient(135deg, #1e3c72, #2a5298);
-      color: white;
-      overflow: hidden;
-    }
+<script>
+  const owner = "nikhilpabolu99";
+  const repo = "data";
+  const branch = "main";
+  const apiBase = `https://api.github.com/repos/${owner}/${repo}/contents`;
 
-    /* Center intro screen */
-    #intro {
-      text-align: center;
-      animation: fadeIn 1s ease;
-    }
+  const intro = document.getElementById("intro");
+  const explorer = document.getElementById("explorer");
+  const grid = document.getElementById("explorerGrid");
+  const pathTitle = document.getElementById("pathTitle");
 
-    .round-btn {
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      background: #ff9800;
-      border: none;
-      color: white;
-      font-size: 20px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: transform 0.3s, background 0.3s;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-    }
-    .round-btn:hover {
-      transform: scale(1.1);
-      background: #f57c00;
-    }
+  // Track current path inside "movies"
+  let currentPath = "";
 
-    /* Explorer screen */
-    #explorer {
-      display: none;
-      flex-direction: column;
-      width: 100%;
-      height: 100vh;
-      padding: 40px;
-      box-sizing: border-box;
-      background: white;
-      color: #333;
-      overflow-y: auto;
-      animation: slideIn 0.6s ease;
-    }
+  // Load folders & files
+  async function loadFolders(path = "") {
+    currentPath = path; // keep track
+    const url = `${apiBase}/movies${path}?ref=${branch}`;
+    const res = await fetch(url);
+    if (!res.ok) return console.error("Error:", res.status);
+    const data = await res.json();
 
-    h2 {
-      margin-bottom: 20px;
-      color: #2a5298;
-    }
+    grid.innerHTML = ""; // clear
 
-    .item-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 20px;
-    }
+    // Decide depth
+    const depth = path.split("/").filter(Boolean).length;
+    // depth = 0 -> movies
+    // depth = 1 -> movies/somefolder
+    // depth = 2 -> movies/somefolder/someother  ✅ show JSONs here
 
-    .card {
-      padding: 20px;
-      border-radius: 12px;
-      text-align: center;
-      cursor: pointer;
-      background: #f1f5f9;
-      transition: transform 0.3s, background 0.3s;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
+    data.forEach(item => {
+      // Show folders always
+      if (item.type === "dir") {
+        const div = document.createElement("div");
+        div.className = "card folder";
+        div.textContent = "📂 " + item.name;
+        div.onclick = () => {
+          pathTitle.textContent = "📂 " + item.path;
+          loadFolders(path + "/" + item.name);
+        };
+        grid.appendChild(div);
+      }
 
-    .card:hover {
-      transform: translateY(-5px);
-      background: #e2e8f0;
-    }
+      // Show JSON files only at depth == 2
+      if (item.type === "file" && item.name.endsWith(".json") && depth === 2) {
+        const div = document.createElement("div");
+        div.className = "card file";
+        div.textContent = "📄 " + item.name;
+        div.onclick = () => window.open(item.html_url, "_blank");
+        grid.appendChild(div);
+      }
+    });
+  }
 
-    .folder { color: #2a5298; font-weight: bold; }
-    .file { color: #d32f2f; font-style: italic; }
-
-    /* Animations */
-    @keyframes fadeIn {
-      from { opacity: 0; transform: scale(0.9); }
-      to { opacity: 1; transform: scale(1); }
-    }
-    @keyframes slideIn {
-      from { transform: translateY(100%); }
-      to { transform: translateY(0); }
-    }
-  </style>
-</head>
-<body>
-  <!-- Intro screen -->
-  <div id="intro">
-    <button id="moviesBtn" class="round-btn">🎬 Movies</button>
-  </div>
-
-  <!-- Explorer screen -->
-  <div id="explorer">
-    <h2 id="pathTitle">📂 Movies</h2>
-    <div class="item-grid" id="explorerGrid"></div>
-  </div>
-
-  <script>
-    const owner = "nikhilpabolu99";
-    const repo = "data";
-    const branch = "main";
-    const apiBase = `https://api.github.com/repos/${owner}/${repo}/contents`;
-
-    const intro = document.getElementById("intro");
-    const explorer = document.getElementById("explorer");
-    const grid = document.getElementById("explorerGrid");
-    const pathTitle = document.getElementById("pathTitle");
-
-    // Load folders & files
-    async function loadFolders(path = "") {
-      const url = `${apiBase}/movies${path}?ref=${branch}`;
-      const res = await fetch(url);
-      if (!res.ok) return console.error("Error:", res.status);
-      const data = await res.json();
-
-      grid.innerHTML = ""; // clear
-
-      data.forEach(item => {
-        // Folders
-        if (item.type === "dir") {
-          const div = document.createElement("div");
-          div.className = "card folder";
-          div.textContent = "📂 " + item.name;
-          div.onclick = () => {
-            pathTitle.textContent = "📂 " + item.path;
-            loadFolders("/" + item.name);
-          };
-          grid.appendChild(div);
-        }
-
-        // JSON files only when depth >= 3
-        if (item.type === "file" && item.name.endsWith(".json")) {
-          const depth = item.path.split("/").length;
-          if (depth >= 3) {
-            const div = document.createElement("div");
-            div.className = "card file";
-            div.textContent = "📄 " + item.name;
-            div.onclick = () => window.open(item.html_url, "_blank");
-            grid.appendChild(div);
-          }
-        }
-      });
-    }
-
-    // When movies button clicked
-    document.getElementById("moviesBtn").onclick = () => {
-      intro.style.display = "none";
-      explorer.style.display = "flex";
-      loadFolders("");
-    };
-  </script>
-</body>
-</html>
+  // When movies button clicked
+  document.getElementById("moviesBtn").onclick = () => {
+    intro.style.display = "none";
+    explorer.style.display = "flex";
+    pathTitle.textContent = "📂 movies";
+    loadFolders("");
+  };
+</script>
