@@ -745,8 +745,165 @@
       title.textContent = folderName;
       container.appendChild(title);
       
-      // Load folder contents
-      await loadFolders(path, 'explorer', false);
+      // Show loading
+      const loading = document.createElement("div");
+      loading.innerHTML = `
+        <div style="text-align: center; padding: 30px;">
+          <div class="loading-spinner" style="margin-bottom: 15px;"></div>
+          <p>Loading folder contents...</p>
+        </div>
+      `;
+      container.appendChild(loading);
+      
+      try {
+        // Fetch folder contents
+        const url = `${apiBase}/${path}?ref=${branch}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Failed to fetch ${path}`);
+        const data = await res.json();
+        
+        // Remove loading
+        container.removeChild(loading);
+        
+        // Show folder contents
+        data.forEach(item => {
+          if (item.type === "dir") {
+            const btn = document.createElement("button");
+            btn.textContent = "📂 " + item.name;
+            btn.className = "explorer-button";
+            btn.onclick = () => showSubFolder(item.path, item.name);
+            container.appendChild(btn);
+          }
+          
+          // Show .json files if at the right depth level
+          if (item.type === "file" && item.name.endsWith(".json")) {
+            const depth = path.split("/").length;
+            if (depth >= 2) { // movies/folder/subfolder level
+              const btn = document.createElement("button");
+              btn.textContent = "📄 " + item.name;
+              btn.className = "explorer-button file-button";
+              btn.onclick = () => openJsonViewer(item.download_url, item.name);
+              container.appendChild(btn);
+            }
+          }
+        });
+        
+        if (data.length === 0) {
+          const noData = document.createElement("div");
+          noData.style.cssText = `
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            font-style: italic;
+          `;
+          noData.textContent = "This folder is empty";
+          container.appendChild(noData);
+        }
+        
+      } catch (err) {
+        console.error("Error loading movie folder:", err);
+        container.removeChild(loading);
+        
+        const errorDiv = document.createElement("div");
+        errorDiv.innerHTML = `
+          <div class="error" style="margin: 20px 0;">
+            <h3>Error Loading Folder</h3>
+            <p>${err.message}</p>
+          </div>
+        `;
+        container.appendChild(errorDiv);
+      }
+    }
+
+    async function showSubFolder(path, folderName) {
+      const container = document.getElementById('explorer');
+      
+      // Save current state to navigation stack
+      navigationStack.push({
+        view: currentView,
+        content: container.innerHTML
+      });
+      currentView = `subfolder-${path}`;
+      
+      // Clear container
+      container.innerHTML = '';
+      
+      // Add back button
+      const backBtn = document.createElement("button");
+      backBtn.textContent = "← Back";
+      backBtn.className = "explorer-button back-button";
+      backBtn.onclick = () => goBack();
+      container.appendChild(backBtn);
+      
+      // Add title
+      const title = document.createElement("div");
+      title.style.cssText = `
+        font-size: 1.2em;
+        font-weight: bold;
+        margin: 20px 0;
+        color: #333;
+        text-align: center;
+      `;
+      title.textContent = folderName;
+      container.appendChild(title);
+      
+      // Show loading
+      const loading = document.createElement("div");
+      loading.innerHTML = `
+        <div style="text-align: center; padding: 30px;">
+          <div class="loading-spinner" style="margin-bottom: 15px;"></div>
+          <p>Loading folder contents...</p>
+        </div>
+      `;
+      container.appendChild(loading);
+      
+      try {
+        // Fetch folder contents
+        const url = `${apiBase}/${path}?ref=${branch}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Failed to fetch ${path}`);
+        const data = await res.json();
+        
+        // Remove loading
+        container.removeChild(loading);
+        
+        // Show folder contents
+        data.forEach(item => {
+          if (item.type === "file" && item.name.endsWith(".json")) {
+            const btn = document.createElement("button");
+            btn.textContent = "📄 " + item.name;
+            btn.className = "explorer-button file-button";
+            btn.onclick = () => openJsonViewer(item.download_url, item.name);
+            container.appendChild(btn);
+          }
+        });
+        
+        const jsonFiles = data.filter(item => item.type === "file" && item.name.endsWith(".json"));
+        if (jsonFiles.length === 0) {
+          const noData = document.createElement("div");
+          noData.style.cssText = `
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            font-style: italic;
+          `;
+          noData.textContent = "No JSON files found in this folder";
+          container.appendChild(noData);
+        }
+        
+      } catch (err) {
+        console.error("Error loading subfolder:", err);
+        container.removeChild(loading);
+        
+        const errorDiv = document.createElement("div");
+        errorDiv.innerHTML = `
+          <div class="error" style="margin: 20px 0;">
+            <h3>Error Loading Folder</h3>
+            <p>${err.message}</p>
+          </div>
+        `;
+        container.appendChild(errorDiv);
+      }
     }
 
     function goBack() {
@@ -763,25 +920,32 @@
     function reattachEventListeners() {
       // Re-attach event listeners to restored buttons
       const container = document.getElementById('explorer');
-      const buttons = container.querySelectorAll('.explorer-button');
       
-      buttons.forEach(btn => {
-        const text = btn.textContent;
+      // Handle back buttons
+      const backButtons = container.querySelectorAll('.back-button');
+      backButtons.forEach(btn => {
+        btn.onclick = () => goBack();
+      });
+      
+      // Handle movies button at root
+      const moviesButton = container.querySelector('button[textContent*="movies"]');
+      if (moviesButton && moviesButton.textContent === '📂 movies') {
+        moviesButton.onclick = () => showAlphabetNavigation();
+      }
+      
+      // Handle alphabet/number buttons
+      const alphabetButtons = container.querySelectorAll('.explorer-button');
+      alphabetButtons.forEach(btn => {
+        const text = btn.textContent.trim();
         
-        if (text === '← Back') {
-          btn.onclick = () => goBack();
-        } else if (text === '📂 movies') {
-          btn.onclick = () => showAlphabetNavigation();
-        } else if (text.match(/^[A-Z0-9-]+$/)) {
-          // Alphabet/number button
+        // Check if it's an alphabet/number button (single characters or 0-9)
+        if (/^[A-Z]$|^0-9$/.test(text)) {
           btn.onclick = () => showMoviesByLetter(text);
-        } else if (text.startsWith('📂 ')) {
-          const folderName = text.replace('📂 ', '');
-          // This would need more context to properly restore - simplified for now
-        } else if (text.startsWith('📄 ')) {
-          // JSON file button - would need the URL to restore properly
         }
       });
+      
+      // We can't fully restore complex folder/file buttons without more context
+      // But the basic navigation should work with the above handlers
     }
 
     // JSON Viewer Functions
