@@ -504,14 +504,28 @@
     async function loadFolders(path = "", containerId = "explorer", isRoot = false) {
       try {
         const url = `${apiBase}/${path}?ref=${branch}`;
+        console.log("Fetching:", url, "isRoot:", isRoot);
         const res = await fetch(url);
         if (!res.ok) throw new Error(`Failed to fetch ${url}`);
         const data = await res.json();
+        console.log("Fetched data:", data);
         const container = document.getElementById(containerId);
         
+        if (!container) {
+          console.error("Container not found:", containerId);
+          return;
+        }
+
+        let itemsAdded = 0;
+        
         data.forEach(item => {
+          console.log("Processing item:", item.name, "type:", item.type, "isRoot:", isRoot);
+          
           // Root: only show "movies"
-          if (isRoot && item.type === "dir" && item.name !== "movies") return;
+          if (isRoot && item.type === "dir" && item.name !== "movies") {
+            console.log("Skipping non-movies folder at root:", item.name);
+            return;
+          }
           
           // Show folders everywhere except movies root (which gets special treatment)
           if (item.type === "dir") {
@@ -520,6 +534,7 @@
             btn.className = "explorer-button";
             
             if (item.name === "movies" && isRoot) {
+              console.log("Adding movies button with alphabet navigation");
               btn.onclick = () => showAlphabetNavigation();
             } else {
               btn.onclick = () => {
@@ -537,6 +552,8 @@
               };
             }
             container.appendChild(btn);
+            itemsAdded++;
+            console.log("Added folder button:", item.name);
           }
           
           // Show .json files ONLY if inside movies/somefolder/someother
@@ -548,11 +565,43 @@
               btn.className = "explorer-button file-button";
               btn.onclick = () => openJsonViewer(item.download_url, item.name);
               container.appendChild(btn);
+              itemsAdded++;
+              console.log("Added file button:", item.name);
             }
           }
         });
+        
+        console.log("Total items added:", itemsAdded);
+        
+        if (itemsAdded === 0 && isRoot) {
+          // Show error message if no movies folder found
+          const errorDiv = document.createElement("div");
+          errorDiv.innerHTML = `
+            <div class="error" style="margin: 20px 0;">
+              <h3>No Movies Folder Found</h3>
+              <p>Could not find the 'movies' folder in the repository.</p>
+              <p>Repository: ${owner}/${repo}</p>
+              <p>Branch: ${branch}</p>
+            </div>
+          `;
+          container.appendChild(errorDiv);
+        }
+        
       } catch (err) {
         console.error("Error loading folders:", err);
+        const container = document.getElementById(containerId);
+        if (container) {
+          const errorDiv = document.createElement("div");
+          errorDiv.innerHTML = `
+            <div class="error" style="margin: 20px 0;">
+              <h3>Error Loading Repository</h3>
+              <p>${err.message}</p>
+              <p>Repository: ${owner}/${repo}</p>
+              <p>Branch: ${branch}</p>
+            </div>
+          `;
+          container.appendChild(errorDiv);
+        }
       }
     }
 
