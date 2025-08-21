@@ -506,7 +506,8 @@
       branch: "main",
       moviesFolder: "movies",
       // GitHub token for higher rate limits (5000 requests/hour vs 60)
-      githubToken: "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"
+      // Set to null to use without authentication (60 requests/hour limit)
+      githubToken: null // "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"
     };
 
     const API_BASE = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents`;
@@ -609,13 +610,19 @@
           });
           
           if (!response.ok) {
+            if (response.status === 401) {
+              throw new Error(`Authentication failed (401). The GitHub token is invalid, expired, or has insufficient permissions. Please check your token or remove it to use anonymous access.`);
+            }
             if (response.status === 403) {
               const rateLimit = await GitHubAPI.checkRateLimit();
               if (rateLimit && rateLimit.remaining === 0) {
                 const resetTime = new Date(rateLimit.reset * 1000);
-                throw new Error(`GitHub API rate limit exceeded. Limit resets at ${resetTime.toLocaleTimeString()}. Consider adding a GitHub token to CONFIG.githubToken for higher limits.`);
+                throw new Error(`GitHub API rate limit exceeded. Limit resets at ${resetTime.toLocaleTimeString()}. Consider adding a valid GitHub token to CONFIG.githubToken for higher limits.`);
               }
-              throw new Error(`Access forbidden (403). The repository might be private or you've hit the rate limit. Try adding a GitHub token to CONFIG.githubToken.`);
+              throw new Error(`Access forbidden (403). The repository might be private, you've hit the rate limit, or your token lacks permissions.`);
+            }
+            if (response.status === 404) {
+              throw new Error(`Repository not found (404). Please check that '${CONFIG.owner}/${CONFIG.repo}' exists and is accessible.`);
             }
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
           }
