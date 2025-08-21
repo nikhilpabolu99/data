@@ -62,7 +62,7 @@
             container.appendChild(btn);
           }
 
-          // ✅ Show .json files ONLY inside subfolders of movies
+          // ✅ Show .json files ONLY inside deeper subfolders under movies
           if (item.type === "file" && item.name.endsWith(".json")) {
             if (path.startsWith("movies/") && path !== "movies") {
               const btn = document.createElement("button");
