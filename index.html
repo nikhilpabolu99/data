@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GitHub Repo Explorer</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    button {
+      display: block;
+      margin: 5px 0;
+      padding: 10px 15px;
+      border: none;
+      background: #4CAF50;
+      color: white;
+      font-size: 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover { background: #45a049; }
+    .folder { margin-left: 20px; }
+  </style>
+</head>
+<body>
+  <h2>📂 GitHub Repo Explorer</h2>
+  <div id="explorer"></div>
+
+  <script>
+    const owner = "nikhilpabolu99";
+    const repo = "data";
+    const branch = "main";
+    const apiBase = `https://api.github.com/repos/${owner}/${repo}/contents`;
+
+    async function loadFolders(path = "", containerId = "explorer") {
+      try {
+        const url = `${apiBase}/${path}?ref=${branch}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Failed to fetch ${url}`);
+        const data = await res.json();
+
+        const container = document.getElementById(containerId);
+
+        data.forEach(item => {
+          if (item.type === "dir") {
+            const btn = document.createElement("button");
+            btn.textContent = item.name;
+            btn.onclick = () => {
+              // create a new sub-container if not already
+              let subContainer = document.getElementById(item.path);
+              if (!subContainer) {
+                subContainer = document.createElement("div");
+                subContainer.id = item.path;
+                subContainer.classList.add("folder");
+                container.appendChild(subContainer);
+              }
+              // load subfolders
+              loadFolders(item.path, item.path);
+            };
+            container.appendChild(btn);
+          }
+        });
+      } catch (err) {
+        console.error("Error loading folders:", err);
+      }
+    }
+
+    // Load root folders
+    loadFolders();
+  </script>
+</body>
+</html>
