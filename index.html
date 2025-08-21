@@ -42,10 +42,10 @@
         const container = document.getElementById(containerId);
 
         data.forEach(item => {
-          // At root: show ONLY "movies" folder
+          // ✅ Root: only show "movies"
           if (isRoot && item.type === "dir" && item.name !== "movies") return;
 
-          // Handle folders
+          // ✅ Show folders everywhere
           if (item.type === "dir") {
             const btn = document.createElement("button");
             btn.textContent = "📂 " + item.name;
@@ -62,13 +62,15 @@
             container.appendChild(btn);
           }
 
-          // Handle JSON files
+          // ✅ Show .json files ONLY inside subfolders of movies
           if (item.type === "file" && item.name.endsWith(".json")) {
-            const btn = document.createElement("button");
-            btn.textContent = "📄 " + item.name;
-            btn.classList.add("file");
-            btn.onclick = () => window.open(item.html_url, "_blank");
-            container.appendChild(btn);
+            if (path.startsWith("movies/") && path !== "movies") {
+              const btn = document.createElement("button");
+              btn.textContent = "📄 " + item.name;
+              btn.classList.add("file");
+              btn.onclick = () => window.open(item.html_url, "_blank");
+              container.appendChild(btn);
+            }
           }
         });
       } catch (err) {
@@ -76,7 +78,7 @@
       }
     }
 
-    // Load only root once, with "movies" filtering
+    // Start at root, with filtering enabled
     loadFolders("", "explorer", true);
   </script>
 </body>
