@@ -515,6 +515,9 @@
                 subContainer.id = item.path;
                 subContainer.classList.add("folder");
                 container.appendChild(subContainer);
+              } else {
+                // Clear existing content to prevent duplicates
+                subContainer.innerHTML = '';
               }
               loadFolders(item.path, item.path, false);
             };
