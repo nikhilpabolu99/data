@@ -2,164 +2,107 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Movies Explorer</title>
+  <title>GitHub Repo Explorer</title>
   <style>
     body {
-      margin: 0;
-      font-family: "Segoe UI", Tahoma, sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      background: linear-gradient(135deg, #1e3c72, #2a5298);
-      color: white;
-      overflow: hidden;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f4f7f9;
     }
-
-    .page {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      opacity: 0;
-      transform: translateY(40px);
-      transition: all 0.6s ease;
+    h2 {
+      color: #333;
     }
-
-    .page.active {
-      opacity: 1;
-      transform: translateY(0);
-      pointer-events: all;
-    }
-
-    .folder-btn, .file-btn {
+    button {
+      display: block;
+      margin: 5px 0;
+      padding: 10px 15px;
       border: none;
-      cursor: pointer;
-      padding: 20px 30px;
-      margin: 10px;
-      border-radius: 50px;
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(6px);
+      background: #4CAF50;
       color: white;
-      font-size: 18px;
-      transition: transform 0.3s ease, background 0.3s ease;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    }
-
-    .folder-btn:hover, .file-btn:hover {
-      transform: scale(1.1);
-      background: rgba(255, 255, 255, 0.2);
-    }
-
-    .round-btn {
-      border-radius: 50%;
-      width: 120px;
-      height: 120px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      font-weight: bold;
-    }
-
-    .grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      justify-content: center;
-      margin-top: 30px;
-    }
-
-    .back-btn {
-      margin-bottom: 30px;
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 30px;
-      padding: 10px 20px;
       font-size: 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: left;
+      width: fit-content;
+      min-width: 180px;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    .folder {
+      margin-left: 20px;
+      padding-left: 10px;
+      border-left: 2px solid #ddd;
+    }
+    .file {
+      margin-left: 20px;
+      background: #2196F3;
+    }
+    .file:hover {
+      background: #1976D2;
     }
   </style>
 </head>
 <body>
-
-  <!-- First page -->
-  <div id="page-root" class="page active">
-    <button class="folder-btn round-btn" onclick="openFolder('movies', this)">Movies</button>
-  </div>
-
-  <!-- Dynamic pages -->
-  <div id="pages-container"></div>
+  <h2>📂 GitHub Repo Explorer</h2>
+  <div id="explorer"></div>
 
   <script>
-    // Mocked structure (replace with fetch if needed)
-    const folderStructure = {
-      "movies": {
-        "somefolder": {
-          "someother": {
-            "sub1": {},
-            "sub2": {},
-            "file1.json": null,
-            "file2.json": null
+    const owner = "nikhilpabolu99";
+    const repo = "data";
+    const branch = "main";
+    const apiBase = `https://api.github.com/repos/${owner}/${repo}/contents`;
+
+    async function loadFolders(path = "", containerId = "explorer", isRoot = false) {
+      try {
+        const url = `${apiBase}/${path}?ref=${branch}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Failed to fetch ${url}`);
+        const data = await res.json();
+
+        const container = document.getElementById(containerId);
+
+        data.forEach(item => {
+          // ✅ Root: only show "movies"
+          if (isRoot && item.type === "dir" && item.name !== "movies") return;
+
+          // ✅ Show folders everywhere
+          if (item.type === "dir") {
+            const btn = document.createElement("button");
+            btn.textContent = "📂 " + item.name;
+            btn.onclick = () => {
+              let subContainer = document.getElementById(item.path);
+              if (!subContainer) {
+                subContainer = document.createElement("div");
+                subContainer.id = item.path;
+                subContainer.classList.add("folder");
+                container.appendChild(subContainer);
+              }
+              loadFolders(item.path, item.path, false);
+            };
+            container.appendChild(btn);
           }
-        }
+
+          // ✅ Show .json files ONLY if inside movies/somefolder/someother
+          if (item.type === "file" && item.name.endsWith(".json")) {
+            const depth = path.split("/").length;
+            if (path.startsWith("movies/") && depth === 3) {
+              const btn = document.createElement("button");
+              btn.textContent = "📄 " + item.name;
+              btn.classList.add("file");
+              btn.onclick = () => window.open(item.html_url, "_blank");
+              container.appendChild(btn);
+            }
+          }
+        });
+      } catch (err) {
+        console.error("Error loading folders:", err);
       }
-    };
-
-    function openFolder(path, btn) {
-      const parts = path.split("/");
-      let current = folderStructure;
-      for (let p of parts) current = current[p];
-
-      const page = document.createElement("div");
-      page.className = "page";
-      const container = document.getElementById("pages-container");
-
-      // Back button
-      if (path !== "movies") {
-        const back = document.createElement("button");
-        back.textContent = "← Back";
-        back.className = "back-btn";
-        back.onclick = () => {
-          page.remove();
-          document.querySelectorAll(".page").forEach(pg => pg.classList.remove("active"));
-          document.querySelector(".page:last-child").classList.add("active");
-        };
-        page.appendChild(back);
-      }
-
-      // Grid of subfolders/files
-      const grid = document.createElement("div");
-      grid.className = "grid";
-
-      Object.keys(current).forEach(key => {
-        if (current[key] !== null && typeof current[key] === "object") {
-          // Folder
-          const btn = document.createElement("button");
-          btn.textContent = key;
-          btn.className = "folder-btn";
-          btn.onclick = () => {
-            document.querySelectorAll(".page").forEach(pg => pg.classList.remove("active"));
-            openFolder(path + "/" + key, btn);
-          };
-          grid.appendChild(btn);
-        } else if (path.endsWith("someother")) {
-          // Show files only inside movies/somefolder/someother
-          const fbtn = document.createElement("button");
-          fbtn.textContent = key;
-          fbtn.className = "file-btn";
-          grid.appendChild(fbtn);
-        }
-      });
-
-      page.appendChild(grid);
-      container.appendChild(page);
-
-      // Switch pages
-      document.querySelectorAll(".page").forEach(pg => pg.classList.remove("active"));
-      setTimeout(() => page.classList.add("active"), 50);
     }
+
+    // Start at root
+    loadFolders("", "explorer", true);
   </script>
 </body>
 </html>
