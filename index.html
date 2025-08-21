@@ -2,75 +2,512 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>GitHub Repo Explorer</title>
+  <title>GitHub Repo Explorer with JSON Viewer</title>
   <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
       padding: 20px;
-      background: #f4f7f9;
     }
-    h2 {
-      color: #333;
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      backdrop-filter: blur(10px);
     }
-    button {
+
+    .header {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      color: white;
+      text-align: center;
+      padding: 30px 20px;
+    }
+
+    .header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .header p {
+      font-size: 1.1em;
+      opacity: 0.9;
+    }
+
+    /* Explorer Styles */
+    .explorer-section {
+      padding: 30px;
+      border-bottom: 1px solid #eee;
       display: block;
-      margin: 5px 0;
-      padding: 10px 15px;
+    }
+
+    .explorer-section.hidden {
+      display: none;
+    }
+
+    .explorer-section h2 {
+      color: #333;
+      margin-bottom: 20px;
+      font-size: 1.8em;
+      text-align: center;
+    }
+
+    .explorer-button {
+      display: block;
+      margin: 8px 0;
+      padding: 12px 18px;
       border: none;
-      background: #4CAF50;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       font-size: 16px;
-      border-radius: 6px;
+      border-radius: 10px;
       cursor: pointer;
       text-align: left;
       width: fit-content;
-      min-width: 180px;
-      transition: background 0.3s;
+      min-width: 220px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+      position: relative;
+      overflow: hidden;
     }
-    button:hover {
-      background: #45a049;
+
+    .explorer-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
     }
+
+    .explorer-button:hover::before {
+      left: 100%;
+    }
+
+    .explorer-button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    }
+
     .folder {
-      margin-left: 20px;
-      padding-left: 10px;
-      border-left: 2px solid #ddd;
+      margin-left: 30px;
+      padding-left: 15px;
+      border-left: 3px solid #ddd;
     }
-    .file {
-      margin-left: 20px;
-      background: #2196F3;
+
+    .file-button {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      margin-left: 30px;
     }
-    .file:hover {
-      background: #1976D2;
+
+    .file-button:hover {
+      background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+    }
+
+    .back-button {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+      margin-bottom: 20px;
+    }
+
+    .back-button:hover {
+      background: linear-gradient(135deg, #ee5a24 0%, #ff6b6b 100%);
+    }
+
+    /* JSON Viewer Styles */
+    .json-viewer-section {
+      padding: 30px;
+      display: none;
+    }
+
+    .json-viewer-section.show {
+      display: block;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 50px;
+      color: #666;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #4facfe;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+      color: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .buttons-container {
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .buttons-container.show {
+      display: block;
+    }
+
+    .buttons-container h3 {
+      color: #333;
+      margin-bottom: 15px;
+      text-align: center;
+      font-size: 1.3em;
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+    }
+
+    .data-button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px;
+      border-radius: 12px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .data-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    .data-button.active {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .record-count {
+      display: block;
+      font-size: 0.85em;
+      opacity: 0.8;
+      margin-top: 5px;
+    }
+
+    .data-display {
+      margin-top: 20px;
+      display: none;
+    }
+
+    .data-display.show {
+      display: block;
+    }
+
+    .data-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .data-title {
+      color: #333;
+      font-size: 1.5em;
+      font-weight: 600;
+    }
+
+    .data-actions {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .data-count {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.9em;
+      font-weight: 600;
+    }
+
+    .filter-section {
+      background: linear-gradient(135deg, #f8f9ff 0%, #e6f3ff 100%);
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 12px;
+      border: 1px solid #e0e8ff;
+      display: none;
+    }
+
+    .filter-section.show {
+      display: block;
+    }
+
+    .filter-controls {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .filter-group label {
+      font-size: 0.9em;
+      font-weight: 600;
+      color: #555;
+    }
+
+    .filter-input {
+      padding: 8px 12px;
+      border: 2px solid #e0e8ff;
+      border-radius: 8px;
+      font-size: 0.9em;
+      transition: all 0.3s ease;
+      background: white;
+    }
+
+    .filter-input:focus {
+      outline: none;
+      border-color: #4facfe;
+      box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+    }
+
+    .clear-filters-btn {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.9em;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      align-self: flex-end;
+    }
+
+    .clear-filters-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+    }
+
+    .table-container {
+      overflow-x: auto;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 600px;
+      font-size: 0.85em;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+
+    th {
+      background: linear-gradient(135deg, #f8f9ff 0%, #e6f3ff 100%);
+      color: #333;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      font-size: 0.8em;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    th:hover {
+      background: linear-gradient(135deg, #e6f3ff 0%, #d0e8ff 100%);
+    }
+
+    tr:hover {
+      background-color: rgba(79, 172, 254, 0.05);
+    }
+
+    tr:nth-child(even) {
+      background-color: rgba(248, 251, 255, 0.5);
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 50px;
+      color: #666;
+      font-size: 1.1em;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        margin: 10px;
+        border-radius: 15px;
+      }
+
+      .header h1 {
+        font-size: 2em;
+      }
+
+      .button-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .data-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+      }
+
+      th, td {
+        padding: 8px 6px;
+        font-size: 0.8em;
+      }
     }
   </style>
 </head>
 <body>
-  <h2>📂 GitHub Repo Explorer</h2>
-  <div id="explorer"></div>
+  <div class="container">
+    <div class="header">
+      <h1>📊 GitHub JSON Data Viewer</h1>
+      <p>Explore repository files and view JSON data</p>
+    </div>
+
+    <!-- File Explorer Section -->
+    <div class="explorer-section" id="explorerSection">
+      <h2>📂 Repository Explorer</h2>
+      <div id="explorer"></div>
+    </div>
+
+    <!-- JSON Viewer Section -->
+    <div class="json-viewer-section" id="jsonViewerSection">
+      <button class="explorer-button back-button" id="backButton" onclick="showExplorer()">
+        ← Back to Explorer
+      </button>
+
+      <div class="loading" id="loadingSection">
+        <div class="loading-spinner"></div>
+        <p>Loading JSON data...</p>
+      </div>
+
+      <div id="errorSection" style="display: none;"></div>
+
+      <div class="buttons-container" id="buttonsContainer">
+        <h3>📋 Available Data Tables</h3>
+        <div class="button-grid" id="buttonGrid"></div>
+      </div>
+
+      <div class="data-display" id="dataDisplay">
+        <div class="data-header">
+          <h3 class="data-title" id="dataTitle">Select a data table</h3>
+          <div class="data-actions">
+            <span class="data-count" id="dataCount">0 records</span>
+          </div>
+        </div>
+        
+        <div class="filter-section" id="filterSection">
+          <div class="filter-controls">
+            <div class="filter-group">
+              <label for="searchInput">🔍 Search</label>
+              <input type="text" id="searchInput" class="filter-input" placeholder="Search in all columns..." oninput="applyFilters()">
+            </div>
+            <div class="filter-group">
+              <label for="columnFilter">📋 Filter by Column</label>
+              <select id="columnFilter" class="filter-input" onchange="applyFilters()">
+                <option value="">All Columns</option>
+              </select>
+            </div>
+            <button class="clear-filters-btn" onclick="clearFilters()">🗑️ Clear</button>
+          </div>
+        </div>
+        
+        <div class="table-container" id="tableContainer">
+          <div class="no-data" id="noData">
+            Click on a data table button above to view its contents
+          </div>
+          <table id="dataTable" style="display: none;">
+            <thead id="tableHead"></thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
+    // Configuration
     const owner = "nikhilpabolu99";
     const repo = "data";
     const branch = "main";
     const apiBase = `https://api.github.com/repos/${owner}/${repo}/contents`;
 
+    // JSON Viewer State
+    let jsonData = {};
+    let currentDataKey = null;
+    let originalData = [];
+    let filteredData = [];
+    let currentSort = { column: null, direction: 'asc' };
+
+    // Initialize the application
+    document.addEventListener('DOMContentLoaded', function() {
+      loadFolders("", "explorer", true);
+    });
+
+    // GitHub Explorer Functions
     async function loadFolders(path = "", containerId = "explorer", isRoot = false) {
       try {
         const url = `${apiBase}/${path}?ref=${branch}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error(`Failed to fetch ${url}`);
         const data = await res.json();
-
         const container = document.getElementById(containerId);
-
+        
         data.forEach(item => {
-          // ✅ Root: only show "movies"
+          // Root: only show "movies"
           if (isRoot && item.type === "dir" && item.name !== "movies") return;
-
-          // ✅ Show folders everywhere
+          
+          // Show folders everywhere
           if (item.type === "dir") {
             const btn = document.createElement("button");
             btn.textContent = "📂 " + item.name;
+            btn.className = "explorer-button";
             btn.onclick = () => {
               let subContainer = document.getElementById(item.path);
               if (!subContainer) {
@@ -83,15 +520,15 @@
             };
             container.appendChild(btn);
           }
-
-          // ✅ Show .json files ONLY if inside movies/somefolder/someother
+          
+          // Show .json files ONLY if inside movies/somefolder/someother
           if (item.type === "file" && item.name.endsWith(".json")) {
             const depth = path.split("/").length;
             if (path.startsWith("movies/") && depth === 3) {
               const btn = document.createElement("button");
               btn.textContent = "📄 " + item.name;
-              btn.classList.add("file");
-              btn.onclick = () => window.open(item.html_url, "_blank");
+              btn.className = "explorer-button file-button";
+              btn.onclick = () => openJsonViewer(item.download_url, item.name);
               container.appendChild(btn);
             }
           }
@@ -101,8 +538,330 @@
       }
     }
 
-    // Start at root
-    loadFolders("", "explorer", true);
+    // JSON Viewer Functions
+    function showExplorer() {
+      document.getElementById('explorerSection').classList.remove('hidden');
+      document.getElementById('jsonViewerSection').classList.remove('show');
+      resetJsonViewer();
+    }
+
+    function showJsonViewer() {
+      document.getElementById('explorerSection').classList.add('hidden');
+      document.getElementById('jsonViewerSection').classList.add('show');
+    }
+
+    function resetJsonViewer() {
+      document.getElementById('loadingSection').style.display = 'none';
+      document.getElementById('errorSection').style.display = 'none';
+      document.getElementById('buttonsContainer').classList.remove('show');
+      document.getElementById('dataDisplay').classList.remove('show');
+      document.getElementById('filterSection').classList.remove('show');
+      document.getElementById('noData').style.display = 'block';
+      document.getElementById('dataTable').style.display = 'none';
+    }
+
+    async function openJsonViewer(url, filename) {
+      showJsonViewer();
+      
+      const loadingSection = document.getElementById('loadingSection');
+      const errorSection = document.getElementById('errorSection');
+      const buttonsContainer = document.getElementById('buttonsContainer');
+      const dataDisplay = document.getElementById('dataDisplay');
+
+      // Show loading
+      loadingSection.style.display = 'block';
+      errorSection.style.display = 'none';
+      buttonsContainer.classList.remove('show');
+      dataDisplay.classList.remove('show');
+
+      try {
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const rawText = await response.text();
+        const cleanedText = rawText.replace(/:\s*NaN/g, ': null');
+        jsonData = JSON.parse(cleanedText);
+        
+        if (!jsonData || typeof jsonData !== 'object') {
+          throw new Error('Invalid JSON data structure');
+        }
+
+        const hasArrayData = Object.values(jsonData).some(value => Array.isArray(value));
+        if (!hasArrayData) {
+          throw new Error('No array data found in JSON file');
+        }
+
+        // Success - show the interface
+        loadingSection.style.display = 'none';
+        buttonsContainer.classList.add('show');
+        dataDisplay.classList.add('show');
+
+        // Update header
+        document.querySelector('.json-viewer-section .header p').textContent = `Viewing: ${filename}`;
+
+        createButtons();
+        resetDataDisplay();
+
+      } catch (error) {
+        console.error('Error loading JSON:', error);
+        showJsonError(error);
+      }
+    }
+
+    function showJsonError(error) {
+      const loadingSection = document.getElementById('loadingSection');
+      const errorSection = document.getElementById('errorSection');
+
+      loadingSection.style.display = 'none';
+
+      let errorMessage = '';
+      if (error.name === 'SyntaxError') {
+        errorMessage = `
+          <div class="error">
+            <h3>📄 Invalid JSON Format</h3>
+            <p>The JSON file contains invalid syntax.</p>
+          </div>
+        `;
+      } else {
+        errorMessage = `
+          <div class="error">
+            <h3>❌ Error Loading Data</h3>
+            <p>${error.message}</p>
+          </div>
+        `;
+      }
+
+      errorSection.innerHTML = errorMessage;
+      errorSection.style.display = 'block';
+    }
+
+    function createButtons() {
+      const buttonGrid = document.getElementById('buttonGrid');
+      buttonGrid.innerHTML = '';
+      
+      Object.keys(jsonData).forEach(key => {
+        if (Array.isArray(jsonData[key])) {
+          const button = document.createElement('button');
+          button.className = 'data-button';
+          
+          const title = document.createElement('div');
+          title.textContent = key.replace(/_/g, ' ').toUpperCase();
+          
+          const count = document.createElement('span');
+          count.className = 'record-count';
+          count.textContent = `${jsonData[key].length} records`;
+          
+          button.appendChild(title);
+          button.appendChild(count);
+          button.addEventListener('click', () => showData(key));
+          buttonGrid.appendChild(button);
+        }
+      });
+    }
+
+    function resetDataDisplay() {
+      document.getElementById('filterSection').classList.remove('show');
+      document.getElementById('noData').style.display = 'block';
+      document.getElementById('dataTable').style.display = 'none';
+    }
+
+    function showData(key) {
+      // Update active button
+      document.querySelectorAll('.data-button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.closest('.data-button').classList.add('active');
+
+      currentDataKey = key;
+      const data = jsonData[key];
+      
+      if (!Array.isArray(data) || data.length === 0) {
+        showNoData(key);
+        return;
+      }
+
+      // Store original data and reset filters
+      originalData = [...data];
+      filteredData = [...data];
+      currentSort = { column: null, direction: 'asc' };
+
+      // Update title and count
+      document.getElementById('dataTitle').textContent = key.replace(/_/g, ' ').toUpperCase();
+      document.getElementById('dataCount').textContent = `${data.length} records`;
+
+      // Show filter section
+      document.getElementById('filterSection').classList.add('show');
+
+      // Setup column filter options
+      setupColumnFilter(data);
+
+      // Show table
+      document.getElementById('noData').style.display = 'none';
+      document.getElementById('dataTable').style.display = 'table';
+
+      // Create table
+      createTable(filteredData);
+    }
+
+    function showNoData(key) {
+      document.getElementById('dataTitle').textContent = key.replace(/_/g, ' ').toUpperCase();
+      document.getElementById('dataCount').textContent = '0 records';
+      document.getElementById('filterSection').classList.remove('show');
+      
+      const noData = document.getElementById('noData');
+      noData.style.display = 'block';
+      noData.textContent = 'No data available for this table';
+      
+      document.getElementById('dataTable').style.display = 'none';
+    }
+
+    function createTable(data) {
+      const tableHead = document.getElementById('tableHead');
+      const tableBody = document.getElementById('tableBody');
+      
+      // Clear previous content
+      tableHead.innerHTML = '';
+      tableBody.innerHTML = '';
+
+      if (data.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="100%" style="text-align: center; padding: 30px; color: #666;">No records match your filters</td></tr>';
+        return;
+      }
+
+      // Get all unique keys from all objects
+      const allKeys = new Set();
+      data.forEach(item => {
+        if (typeof item === 'object' && item !== null) {
+          Object.keys(item).forEach(key => allKeys.add(key));
+        }
+      });
+
+      const keys = Array.from(allKeys);
+
+      // Create header
+      const headerRow = document.createElement('tr');
+      keys.forEach(key => {
+        const th = document.createElement('th');
+        th.textContent = key.replace(/_/g, ' ').toUpperCase();
+        th.onclick = () => sortTable(key);
+        headerRow.appendChild(th);
+      });
+      tableHead.appendChild(headerRow);
+
+      // Create body rows
+      data.forEach(item => {
+        const row = document.createElement('tr');
+        keys.forEach(key => {
+          const td = document.createElement('td');
+          let value = item[key];
+          
+          if (value === null || value === undefined) {
+            td.textContent = '-';
+            td.style.color = '#999';
+          } else if (typeof value === 'number') {
+            td.textContent = value.toLocaleString();
+          } else if (typeof value === 'object') {
+            td.textContent = JSON.stringify(value);
+          } else {
+            td.textContent = String(value);
+          }
+          
+          row.appendChild(td);
+        });
+        tableBody.appendChild(row);
+      });
+    }
+
+    function setupColumnFilter(data) {
+      const columnFilter = document.getElementById('columnFilter');
+      columnFilter.innerHTML = '<option value="">All Columns</option>';
+      
+      if (data.length === 0) return;
+
+      const allKeys = new Set();
+      data.forEach(item => {
+        if (typeof item === 'object' && item !== null) {
+          Object.keys(item).forEach(key => allKeys.add(key));
+        }
+      });
+
+      Array.from(allKeys).sort().forEach(key => {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = key.replace(/_/g, ' ').toUpperCase();
+        columnFilter.appendChild(option);
+      });
+    }
+
+    function sortTable(column) {
+      if (currentSort.column === column) {
+        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+      } else {
+        currentSort.column = column;
+        currentSort.direction = 'asc';
+      }
+
+      filteredData.sort((a, b) => {
+        let aVal = a[column];
+        let bVal = b[column];
+
+        if (aVal == null && bVal == null) return 0;
+        if (aVal == null) return 1;
+        if (bVal == null) return -1;
+
+        if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+        if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+
+        let comparison = 0;
+        if (aVal > bVal) comparison = 1;
+        else if (aVal < bVal) comparison = -1;
+
+        return currentSort.direction === 'asc' ? comparison : -comparison;
+      });
+
+      createTable(filteredData);
+    }
+
+    function applyFilters() {
+      const searchInput = document.getElementById('searchInput').value.toLowerCase();
+      const columnFilter = document.getElementById('columnFilter').value;
+
+      filteredData = originalData.filter(item => {
+        let matchesSearch = true;
+        if (searchInput) {
+          if (columnFilter) {
+            const value = item[columnFilter];
+            matchesSearch = value != null && String(value).toLowerCase().includes(searchInput);
+          } else {
+            matchesSearch = Object.values(item).some(value => 
+              value != null && String(value).toLowerCase().includes(searchInput)
+            );
+          }
+        }
+        return matchesSearch;
+      });
+
+      if (currentSort.column) {
+        sortTable(currentSort.column);
+      } else {
+        createTable(filteredData);
+      }
+
+      document.getElementById('dataCount').textContent = `${filteredData.length} records`;
+    }
+
+    function clearFilters() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('columnFilter').value = '';
+      currentSort = { column: null, direction: 'asc' };
+      
+      filteredData = [...originalData];
+      createTable(filteredData);
+      document.getElementById('dataCount').textContent = `${filteredData.length} records`;
+    }
   </script>
 </body>
 </html>
