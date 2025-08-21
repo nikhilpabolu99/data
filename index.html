@@ -487,8 +487,14 @@
 
     // Initialize the application
     document.addEventListener('DOMContentLoaded', function() {
-      loadFolders("", "explorer", true);
+      initializeExplorer();
     });
+
+    function initializeExplorer() {
+      navigationStack = [];
+      currentView = 'root';
+      loadFolders("", "explorer", true);
+    }
 
     // Navigation state
     let navigationStack = [];
@@ -914,7 +920,18 @@
         
         // Re-attach event listeners for the restored content
         reattachEventListeners();
+      } else if (currentView !== 'root') {
+        // Fallback: go back to root if navigation stack is empty
+        goBackToRoot();
       }
+    }
+
+    function goBackToRoot() {
+      navigationStack = [];
+      currentView = 'root';
+      const container = document.getElementById('explorer');
+      container.innerHTML = '';
+      loadFolders("", "explorer", true);
     }
 
     function reattachEventListeners() {
@@ -928,24 +945,24 @@
       });
       
       // Handle movies button at root
-      const moviesButton = container.querySelector('button[textContent*="movies"]');
-      if (moviesButton && moviesButton.textContent === '📂 movies') {
-        moviesButton.onclick = () => showAlphabetNavigation();
-      }
-      
-      // Handle alphabet/number buttons
-      const alphabetButtons = container.querySelectorAll('.explorer-button');
-      alphabetButtons.forEach(btn => {
+      const buttons = container.querySelectorAll('.explorer-button');
+      buttons.forEach(btn => {
         const text = btn.textContent.trim();
         
+        if (text === '📂 movies') {
+          btn.onclick = () => showAlphabetNavigation();
+        }
         // Check if it's an alphabet/number button (single characters or 0-9)
-        if (/^[A-Z]$|^0-9$/.test(text)) {
+        else if (/^[A-Z]$|^0-9$/.test(text)) {
           btn.onclick = () => showMoviesByLetter(text);
         }
+        // Handle movie folder buttons (this is a simplified restoration)
+        else if (text.startsWith('📂 ') && currentView.startsWith('letter-')) {
+          const folderName = text.replace('📂 ', '');
+          // Extract the path from the current view context
+          // This is a limitation - we'd need to store more context for full restoration
+        }
       });
-      
-      // We can't fully restore complex folder/file buttons without more context
-      // But the basic navigation should work with the above handlers
     }
 
     // JSON Viewer Functions
