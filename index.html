@@ -521,7 +521,6 @@
       // JSON Viewer
       jsonData: {},
       currentDataKey: null,
-      currentFileInfo: null,
       originalData: [],
       filteredData: [],
       currentSort: { column: null, direction: 'asc' }
@@ -803,18 +802,9 @@
               const depth = path.split("/").filter(p => p).length;
               if (path.startsWith(`${CONFIG.moviesFolder}/`) && depth >= 2) {
                 const btn = document.createElement("button");
+                btn.textContent = "📄 " + item.name;
                 btn.className = "explorer-button file-button";
-                
-                // Create file info with timestamp
-                const fileInfo = document.createElement("div");
-                fileInfo.innerHTML = `
-                  <div style="font-weight: bold;">📄 ${item.name}</div>
-                  <div style="font-size: 0.8em; opacity: 0.8; margin-top: 4px;">
-                    Last updated: ${item.last_modified ? new Date(item.last_modified).toLocaleString() : 'Unknown'}
-                  </div>
-                `;
-                btn.appendChild(fileInfo);
-                btn.onclick = () => JsonViewer.openJsonViewer(item.download_url, item.name, item);
+                btn.onclick = () => JsonViewer.openJsonViewer(item.download_url, item.name);
                 container.appendChild(btn);
                 itemsAdded++;
               }
@@ -917,19 +907,8 @@
               btn.onclick = () => Explorer.showSubFolder(item.path, item.name);
               container.appendChild(btn);
             } else if (item.type === "file" && item.name.endsWith(".json")) {
-              const btn = document.createElement("button");
-              btn.className = "explorer-button file-button";
-              
-              // Create file info with timestamp
-              const fileInfo = document.createElement("div");
-              fileInfo.innerHTML = `
-                <div style="font-weight: bold;">📄 ${item.name}</div>
-                <div style="font-size: 0.8em; opacity: 0.8; margin-top: 4px;">
-                  Last updated: ${item.last_modified ? new Date(item.last_modified).toLocaleString() : 'Unknown'}
-                </div>
-              `;
-              btn.appendChild(fileInfo);
-              btn.onclick = () => JsonViewer.openJsonViewer(item.download_url, item.name, item);
+              const btn = UI.createButton("📄 " + item.name, "explorer-button file-button");
+              btn.onclick = () => JsonViewer.openJsonViewer(item.download_url, item.name);
               container.appendChild(btn);
             }
           });
@@ -962,19 +941,8 @@
             UI.showNoData(container, "No JSON files found in this folder");
           } else {
             jsonFiles.forEach(item => {
-              const btn = document.createElement("button");
-              btn.className = "explorer-button file-button";
-              
-              // Create file info with timestamp
-              const fileInfo = document.createElement("div");
-              fileInfo.innerHTML = `
-                <div style="font-weight: bold;">📄 ${item.name}</div>
-                <div style="font-size: 0.8em; opacity: 0.8; margin-top: 4px;">
-                  Last updated: ${item.last_modified ? new Date(item.last_modified).toLocaleString() : 'Unknown'}
-                </div>
-              `;
-              btn.appendChild(fileInfo);
-              btn.onclick = () => JsonViewer.openJsonViewer(item.download_url, item.name, item);
+              const btn = UI.createButton("📄 " + item.name, "explorer-button file-button");
+              btn.onclick = () => JsonViewer.openJsonViewer(item.download_url, item.name);
               container.appendChild(btn);
             });
           }
@@ -1075,7 +1043,7 @@
       },
 
       // Open JSON viewer with file URL
-      openJsonViewer: async (url, filename, fileInfo = null) => {
+      openJsonViewer: async (url, filename) => {
         JsonViewer.show();
         
         const loadingSection = document.getElementById('loadingSection');
@@ -1091,7 +1059,6 @@
 
         try {
           AppState.jsonData = await GitHubAPI.fetchJsonFile(url);
-          AppState.currentFileInfo = fileInfo;
           
           if (!AppState.jsonData || typeof AppState.jsonData !== 'object') {
             throw new Error('Invalid JSON data structure');
@@ -1107,12 +1074,8 @@
           buttonsContainer.classList.add('show');
           dataDisplay.classList.add('show');
 
-          // Update header title with file info
-          let headerText = `Viewing: ${filename}`;
-          if (fileInfo && fileInfo.last_modified) {
-            headerText += ` (Updated: ${new Date(fileInfo.last_modified).toLocaleString()})`;
-          }
-          document.querySelector('.header p').textContent = headerText;
+          // Update header title
+          document.querySelector('.header p').textContent = `Viewing: ${filename}`;
 
           JsonViewer.createDataButtons();
           JsonViewer.resetDataDisplay();
@@ -1252,12 +1215,6 @@
           return;
         }
 
-        // Special handling for moviewise_summary
-        if (AppState.currentDataKey === 'moviewise_summary') {
-          DataTable.createMoviewiseSummaryTable(data);
-          return;
-        }
-
         // Get all unique keys from all objects
         const allKeys = new Set();
         data.forEach(item => {
@@ -1299,56 +1256,6 @@
             row.appendChild(td);
           });
           tableBody.appendChild(row);
-        });
-      },
-
-      // Create special table for moviewise_summary with key:value format
-      createMoviewiseSummaryTable: (data) => {
-        const tableHead = document.getElementById('tableHead');
-        const tableBody = document.getElementById('tableBody');
-        
-        // Create simple header
-        const headerRow = document.createElement('tr');
-        const th = document.createElement('th');
-        th.textContent = 'MOVIEWISE SUMMARY';
-        th.style.textAlign = 'center';
-        headerRow.appendChild(th);
-        tableHead.appendChild(headerRow);
-
-        // Create body with key:value format
-        data.forEach(item => {
-          if (typeof item === 'object' && item !== null) {
-            const row = document.createElement('tr');
-            const td = document.createElement('td');
-            
-            // Format as key:value pairs
-            const pairs = [];
-            
-            // Specific order: movie, total_shows, bookedseats, totalgross, Occupancy
-            const orderedKeys = ['movie', 'total_shows', 'bookedseats', 'totalgross', 'Occupancy'];
-            const remainingKeys = Object.keys(item).filter(key => !orderedKeys.includes(key));
-            const allKeys = [...orderedKeys.filter(key => item.hasOwnProperty(key)), ...remainingKeys];
-            
-            allKeys.forEach(key => {
-              if (item.hasOwnProperty(key)) {
-                let value = item[key];
-                if (value === null || value === undefined) {
-                  value = '-';
-                } else if (typeof value === 'number') {
-                  value = value.toLocaleString();
-                }
-                pairs.push(`${key}:${value}`);
-              }
-            });
-            
-            td.innerHTML = pairs.join(' | ');
-            td.style.padding = '12px';
-            td.style.fontSize = '0.9em';
-            td.style.fontFamily = 'monospace';
-            
-            row.appendChild(td);
-            tableBody.appendChild(row);
-          }
         });
       },
 
