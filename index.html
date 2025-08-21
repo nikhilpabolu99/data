@@ -490,6 +490,10 @@
       loadFolders("", "explorer", true);
     });
 
+    // Navigation state
+    let navigationStack = [];
+    let currentView = 'root';
+
     // GitHub Explorer Functions
     async function loadFolders(path = "", containerId = "explorer", isRoot = false) {
       try {
@@ -503,24 +507,29 @@
           // Root: only show "movies"
           if (isRoot && item.type === "dir" && item.name !== "movies") return;
           
-          // Show folders everywhere
+          // Show folders everywhere except movies root (which gets special treatment)
           if (item.type === "dir") {
             const btn = document.createElement("button");
             btn.textContent = "📂 " + item.name;
             btn.className = "explorer-button";
-            btn.onclick = () => {
-              let subContainer = document.getElementById(item.path);
-              if (!subContainer) {
-                subContainer = document.createElement("div");
-                subContainer.id = item.path;
-                subContainer.classList.add("folder");
-                container.appendChild(subContainer);
-              } else {
-                // Clear existing content to prevent duplicates
-                subContainer.innerHTML = '';
-              }
-              loadFolders(item.path, item.path, false);
-            };
+            
+            if (item.name === "movies" && isRoot) {
+              btn.onclick = () => showAlphabetNavigation();
+            } else {
+              btn.onclick = () => {
+                let subContainer = document.getElementById(item.path);
+                if (!subContainer) {
+                  subContainer = document.createElement("div");
+                  subContainer.id = item.path;
+                  subContainer.classList.add("folder");
+                  container.appendChild(subContainer);
+                } else {
+                  // Clear existing content to prevent duplicates
+                  subContainer.innerHTML = '';
+                }
+                loadFolders(item.path, item.path, false);
+              };
+            }
             container.appendChild(btn);
           }
           
@@ -539,6 +548,240 @@
       } catch (err) {
         console.error("Error loading folders:", err);
       }
+    }
+
+    function showAlphabetNavigation() {
+      const container = document.getElementById('explorer');
+      
+      // Save current state to navigation stack
+      navigationStack.push({
+        view: currentView,
+        content: container.innerHTML
+      });
+      currentView = 'alphabet';
+      
+      // Clear container and show alphabet navigation
+      container.innerHTML = '';
+      
+      // Add back button
+      const backBtn = document.createElement("button");
+      backBtn.textContent = "← Back";
+      backBtn.className = "explorer-button back-button";
+      backBtn.onclick = () => goBack();
+      container.appendChild(backBtn);
+      
+      // Add title
+      const title = document.createElement("div");
+      title.style.cssText = `
+        font-size: 1.2em;
+        font-weight: bold;
+        margin: 20px 0;
+        color: #333;
+        text-align: center;
+      `;
+      title.textContent = "Select Starting Letter";
+      container.appendChild(title);
+      
+      // Create alphabet and number buttons
+      const letters = ['0-9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+      
+      const buttonGrid = document.createElement("div");
+      buttonGrid.style.cssText = `
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+        gap: 10px;
+        margin: 20px 0;
+      `;
+      
+      letters.forEach(letter => {
+        const btn = document.createElement("button");
+        btn.textContent = letter;
+        btn.className = "explorer-button";
+        btn.style.cssText = `
+          min-width: 60px;
+          text-align: center;
+          font-weight: bold;
+          font-size: 1.1em;
+        `;
+        btn.onclick = () => showMoviesByLetter(letter);
+        buttonGrid.appendChild(btn);
+      });
+      
+      container.appendChild(buttonGrid);
+    }
+
+    async function showMoviesByLetter(letter) {
+      const container = document.getElementById('explorer');
+      
+      // Save current state to navigation stack
+      navigationStack.push({
+        view: currentView,
+        content: container.innerHTML
+      });
+      currentView = `letter-${letter}`;
+      
+      // Clear container and show loading
+      container.innerHTML = '';
+      
+      // Add back button
+      const backBtn = document.createElement("button");
+      backBtn.textContent = "← Back to Letters";
+      backBtn.className = "explorer-button back-button";
+      backBtn.onclick = () => goBack();
+      container.appendChild(backBtn);
+      
+      // Add title
+      const title = document.createElement("div");
+      title.style.cssText = `
+        font-size: 1.2em;
+        font-weight: bold;
+        margin: 20px 0;
+        color: #333;
+        text-align: center;
+      `;
+      title.textContent = `Movies starting with "${letter}"`;
+      container.appendChild(title);
+      
+      // Show loading
+      const loading = document.createElement("div");
+      loading.innerHTML = `
+        <div style="text-align: center; padding: 30px;">
+          <div class="loading-spinner" style="margin-bottom: 15px;"></div>
+          <p>Loading movies...</p>
+        </div>
+      `;
+      container.appendChild(loading);
+      
+      try {
+        // Fetch movies folder contents
+        const url = `${apiBase}/movies?ref=${branch}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Failed to fetch movies`);
+        const data = await res.json();
+        
+        // Remove loading
+        container.removeChild(loading);
+        
+        // Filter folders by starting letter
+        const filteredFolders = data.filter(item => {
+          if (item.type !== "dir") return false;
+          
+          const firstChar = item.name.charAt(0).toUpperCase();
+          if (letter === '0-9') {
+            return /[0-9]/.test(firstChar);
+          } else {
+            return firstChar === letter;
+          }
+        });
+        
+        if (filteredFolders.length === 0) {
+          const noData = document.createElement("div");
+          noData.style.cssText = `
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            font-style: italic;
+          `;
+          noData.textContent = `No movies found starting with "${letter}"`;
+          container.appendChild(noData);
+        } else {
+          // Show filtered folders
+          filteredFolders.forEach(item => {
+            const btn = document.createElement("button");
+            btn.textContent = "📂 " + item.name;
+            btn.className = "explorer-button";
+            btn.onclick = () => {
+              // Navigate to the movie folder and load its contents
+              showMovieFolder(item.path, item.name);
+            };
+            container.appendChild(btn);
+          });
+        }
+        
+      } catch (err) {
+        console.error("Error loading movies by letter:", err);
+        container.removeChild(loading);
+        
+        const errorDiv = document.createElement("div");
+        errorDiv.innerHTML = `
+          <div class="error" style="margin: 20px 0;">
+            <h3>Error Loading Movies</h3>
+            <p>${err.message}</p>
+          </div>
+        `;
+        container.appendChild(errorDiv);
+      }
+    }
+
+    async function showMovieFolder(path, folderName) {
+      const container = document.getElementById('explorer');
+      
+      // Save current state to navigation stack
+      navigationStack.push({
+        view: currentView,
+        content: container.innerHTML
+      });
+      currentView = `movie-${path}`;
+      
+      // Clear container and show loading
+      container.innerHTML = '';
+      
+      // Add back button
+      const backBtn = document.createElement("button");
+      backBtn.textContent = "← Back to Movies";
+      backBtn.className = "explorer-button back-button";
+      backBtn.onclick = () => goBack();
+      container.appendChild(backBtn);
+      
+      // Add title
+      const title = document.createElement("div");
+      title.style.cssText = `
+        font-size: 1.2em;
+        font-weight: bold;
+        margin: 20px 0;
+        color: #333;
+        text-align: center;
+      `;
+      title.textContent = folderName;
+      container.appendChild(title);
+      
+      // Load folder contents
+      await loadFolders(path, 'explorer', false);
+    }
+
+    function goBack() {
+      if (navigationStack.length > 0) {
+        const previousState = navigationStack.pop();
+        currentView = previousState.view;
+        document.getElementById('explorer').innerHTML = previousState.content;
+        
+        // Re-attach event listeners for the restored content
+        reattachEventListeners();
+      }
+    }
+
+    function reattachEventListeners() {
+      // Re-attach event listeners to restored buttons
+      const container = document.getElementById('explorer');
+      const buttons = container.querySelectorAll('.explorer-button');
+      
+      buttons.forEach(btn => {
+        const text = btn.textContent;
+        
+        if (text === '← Back') {
+          btn.onclick = () => goBack();
+        } else if (text === '📂 movies') {
+          btn.onclick = () => showAlphabetNavigation();
+        } else if (text.match(/^[A-Z0-9-]+$/)) {
+          // Alphabet/number button
+          btn.onclick = () => showMoviesByLetter(text);
+        } else if (text.startsWith('📂 ')) {
+          const folderName = text.replace('📂 ', '');
+          // This would need more context to properly restore - simplified for now
+        } else if (text.startsWith('📄 ')) {
+          // JSON file button - would need the URL to restore properly
+        }
+      });
     }
 
     // JSON Viewer Functions
