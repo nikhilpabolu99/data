@@ -18,6 +18,8 @@
     }
     button:hover { background: #45a049; }
     .folder { margin-left: 20px; }
+    .file { margin-left: 20px; background: #2196F3; }
+    .file:hover { background: #1976D2; }
   </style>
 </head>
 <body>
@@ -30,7 +32,7 @@
     const branch = "main";
     const apiBase = `https://api.github.com/repos/${owner}/${repo}/contents`;
 
-    async function loadFolders(path = "", containerId = "explorer") {
+    async function loadFolders(path = "", containerId = "explorer", isRoot = false) {
       try {
         const url = `${apiBase}/${path}?ref=${branch}`;
         const res = await fetch(url);
@@ -40,11 +42,14 @@
         const container = document.getElementById(containerId);
 
         data.forEach(item => {
+          // At root: show ONLY "movies" folder
+          if (isRoot && item.type === "dir" && item.name !== "movies") return;
+
+          // Handle folders
           if (item.type === "dir") {
             const btn = document.createElement("button");
-            btn.textContent = item.name;
+            btn.textContent = "📂 " + item.name;
             btn.onclick = () => {
-              // create a new sub-container if not already
               let subContainer = document.getElementById(item.path);
               if (!subContainer) {
                 subContainer = document.createElement("div");
@@ -52,9 +57,17 @@
                 subContainer.classList.add("folder");
                 container.appendChild(subContainer);
               }
-              // load subfolders
-              loadFolders(item.path, item.path);
+              loadFolders(item.path, item.path, false);
             };
+            container.appendChild(btn);
+          }
+
+          // Handle JSON files
+          if (item.type === "file" && item.name.endsWith(".json")) {
+            const btn = document.createElement("button");
+            btn.textContent = "📄 " + item.name;
+            btn.classList.add("file");
+            btn.onclick = () => window.open(item.html_url, "_blank");
             container.appendChild(btn);
           }
         });
@@ -63,8 +76,8 @@
       }
     }
 
-    // Load root folders
-    loadFolders();
+    // Load only root once, with "movies" filtering
+    loadFolders("", "explorer", true);
   </script>
 </body>
 </html>
