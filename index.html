@@ -1,62 +1,165 @@
-<script>
-  const owner = "nikhilpabolu99";
-  const repo = "data";
-  const branch = "main";
-  const apiBase = `https://api.github.com/repos/${owner}/${repo}/contents`;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Movies Explorer</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      color: white;
+      overflow: hidden;
+    }
 
-  const intro = document.getElementById("intro");
-  const explorer = document.getElementById("explorer");
-  const grid = document.getElementById("explorerGrid");
-  const pathTitle = document.getElementById("pathTitle");
+    .page {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transform: translateY(40px);
+      transition: all 0.6s ease;
+    }
 
-  // Track current path inside "movies"
-  let currentPath = "";
+    .page.active {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: all;
+    }
 
-  // Load folders & files
-  async function loadFolders(path = "") {
-    currentPath = path; // keep track
-    const url = `${apiBase}/movies${path}?ref=${branch}`;
-    const res = await fetch(url);
-    if (!res.ok) return console.error("Error:", res.status);
-    const data = await res.json();
+    .folder-btn, .file-btn {
+      border: none;
+      cursor: pointer;
+      padding: 20px 30px;
+      margin: 10px;
+      border-radius: 50px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(6px);
+      color: white;
+      font-size: 18px;
+      transition: transform 0.3s ease, background 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
 
-    grid.innerHTML = ""; // clear
+    .folder-btn:hover, .file-btn:hover {
+      transform: scale(1.1);
+      background: rgba(255, 255, 255, 0.2);
+    }
 
-    // Decide depth
-    const depth = path.split("/").filter(Boolean).length;
-    // depth = 0 -> movies
-    // depth = 1 -> movies/somefolder
-    // depth = 2 -> movies/somefolder/someother  ✅ show JSONs here
+    .round-btn {
+      border-radius: 50%;
+      width: 120px;
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: bold;
+    }
 
-    data.forEach(item => {
-      // Show folders always
-      if (item.type === "dir") {
-        const div = document.createElement("div");
-        div.className = "card folder";
-        div.textContent = "📂 " + item.name;
-        div.onclick = () => {
-          pathTitle.textContent = "📂 " + item.path;
-          loadFolders(path + "/" + item.name);
+    .grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      margin-top: 30px;
+    }
+
+    .back-btn {
+      margin-bottom: 30px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 30px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- First page -->
+  <div id="page-root" class="page active">
+    <button class="folder-btn round-btn" onclick="openFolder('movies', this)">Movies</button>
+  </div>
+
+  <!-- Dynamic pages -->
+  <div id="pages-container"></div>
+
+  <script>
+    // Mocked structure (replace with fetch if needed)
+    const folderStructure = {
+      "movies": {
+        "somefolder": {
+          "someother": {
+            "sub1": {},
+            "sub2": {},
+            "file1.json": null,
+            "file2.json": null
+          }
+        }
+      }
+    };
+
+    function openFolder(path, btn) {
+      const parts = path.split("/");
+      let current = folderStructure;
+      for (let p of parts) current = current[p];
+
+      const page = document.createElement("div");
+      page.className = "page";
+      const container = document.getElementById("pages-container");
+
+      // Back button
+      if (path !== "movies") {
+        const back = document.createElement("button");
+        back.textContent = "← Back";
+        back.className = "back-btn";
+        back.onclick = () => {
+          page.remove();
+          document.querySelectorAll(".page").forEach(pg => pg.classList.remove("active"));
+          document.querySelector(".page:last-child").classList.add("active");
         };
-        grid.appendChild(div);
+        page.appendChild(back);
       }
 
-      // Show JSON files only at depth == 2
-      if (item.type === "file" && item.name.endsWith(".json") && depth === 2) {
-        const div = document.createElement("div");
-        div.className = "card file";
-        div.textContent = "📄 " + item.name;
-        div.onclick = () => window.open(item.html_url, "_blank");
-        grid.appendChild(div);
-      }
-    });
-  }
+      // Grid of subfolders/files
+      const grid = document.createElement("div");
+      grid.className = "grid";
 
-  // When movies button clicked
-  document.getElementById("moviesBtn").onclick = () => {
-    intro.style.display = "none";
-    explorer.style.display = "flex";
-    pathTitle.textContent = "📂 movies";
-    loadFolders("");
-  };
-</script>
+      Object.keys(current).forEach(key => {
+        if (current[key] !== null && typeof current[key] === "object") {
+          // Folder
+          const btn = document.createElement("button");
+          btn.textContent = key;
+          btn.className = "folder-btn";
+          btn.onclick = () => {
+            document.querySelectorAll(".page").forEach(pg => pg.classList.remove("active"));
+            openFolder(path + "/" + key, btn);
+          };
+          grid.appendChild(btn);
+        } else if (path.endsWith("someother")) {
+          // Show files only inside movies/somefolder/someother
+          const fbtn = document.createElement("button");
+          fbtn.textContent = key;
+          fbtn.className = "file-btn";
+          grid.appendChild(fbtn);
+        }
+      });
+
+      page.appendChild(grid);
+      container.appendChild(page);
+
+      // Switch pages
+      document.querySelectorAll(".page").forEach(pg => pg.classList.remove("active"));
+      setTimeout(() => page.classList.add("active"), 50);
+    }
+  </script>
+</body>
+</html>
