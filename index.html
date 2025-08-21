@@ -62,9 +62,10 @@
             container.appendChild(btn);
           }
 
-          // ✅ Show .json files ONLY inside deeper subfolders under movies
+          // ✅ Show .json files ONLY if depth >= 3 (movies/somefolder/someother)
           if (item.type === "file" && item.name.endsWith(".json")) {
-            if (path.startsWith("movies/") && path !== "movies") {
+            const depth = path.split("/").length;
+            if (path.startsWith("movies/") && depth >= 3) {
               const btn = document.createElement("button");
               btn.textContent = "📄 " + item.name;
               btn.classList.add("file");
