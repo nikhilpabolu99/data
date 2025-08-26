@@ -194,6 +194,60 @@
       text-align: center;
     }
 
+    /* Key-Value Summary Display */
+    .summary-section {
+      background: linear-gradient(135deg, #f8f9ff 0%, #e6f3ff 100%);
+      border: 1px solid #e0e8ff;
+      border-radius: 15px;
+      padding: 25px;
+      margin: 25px 0;
+      display: none;
+    }
+
+    .summary-section.show {
+      display: block;
+    }
+
+    .summary-title {
+      color: #333;
+      font-size: 1.4em;
+      font-weight: 600;
+      margin-bottom: 20px;
+      text-align: center;
+      border-bottom: 2px solid #4facfe;
+      padding-bottom: 10px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .summary-item {
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      border-left: 4px solid #4facfe;
+    }
+
+    .summary-key {
+      font-weight: 600;
+      color: #333;
+      font-size: 0.9em;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .summary-value {
+      color: #666;
+      font-size: 1em;
+      word-wrap: break-word;
+    }
+
     .buttons-container {
       margin-bottom: 20px;
       display: none;
@@ -408,7 +462,7 @@
         font-size: 2em;
       }
 
-      .button-grid, .alphabet-grid {
+      .button-grid, .alphabet-grid, .summary-grid {
         grid-template-columns: 1fr;
       }
 
@@ -455,6 +509,12 @@
       </div>
 
       <div id="errorSection" style="display: none;"></div>
+
+      <!-- Key-Value Summary Section -->
+      <div class="summary-section" id="summarySection">
+        <div class="summary-title" id="summaryTitle">Movie Summary</div>
+        <div class="summary-grid" id="summaryGrid"></div>
+      </div>
 
       <div class="buttons-container" id="buttonsContainer">
         <h3>📋 Available Data Tables</h3>
@@ -772,90 +832,6 @@
         }
 
         try {
-          const data = await GitHubAPI.fetchFolderContents(path);
-          let itemsAdded = 0;
-
-          data.forEach(item => {
-            // Root: only show movies folder
-            if (isRoot && item.type === "dir" && item.name !== CONFIG.moviesFolder) {
-              return;
-            }
-
-            if (item.type === "dir") {
-              const btn = document.createElement("button");
-              btn.textContent = "📂 " + item.name;
-              btn.className = "explorer-button";
-              
-              if (item.name === CONFIG.moviesFolder && isRoot) {
-                btn.setAttribute('data-action', 'movies');
-                btn.onclick = () => UI.showAlphabetNavigation();
-              } else {
-                btn.onclick = () => Explorer.expandFolder(item, container);
-              }
-              
-              container.appendChild(btn);
-              itemsAdded++;
-            }
-
-            // Show .json files only at the correct depth
-            if (item.type === "file" && item.name.endsWith(".json")) {
-              const depth = path.split("/").filter(p => p).length;
-              if (path.startsWith(`${CONFIG.moviesFolder}/`) && depth >= 2) {
-                const btn = document.createElement("button");
-                btn.textContent = "📄 " + item.name;
-                btn.className = "explorer-button file-button";
-                btn.onclick = () => JsonViewer.openJsonViewer(item.download_url, item.name);
-                container.appendChild(btn);
-                itemsAdded++;
-              }
-            }
-          });
-
-          if (itemsAdded === 0 && isRoot) {
-            const error = Utils.createErrorElement(
-              "No Movies Folder Found",
-              `Could not find the '${CONFIG.moviesFolder}' folder in ${CONFIG.owner}/${CONFIG.repo}. Make sure the repository is public and the folder exists.`,
-              false
-            );
-            container.appendChild(error);
-          }
-
-        } catch (err) {
-          console.error("Error loading folders:", err);
-          const error = Utils.createErrorElement(
-            "Error Loading Repository", 
-            err.message,
-            err.message.includes('403') || err.message.includes('rate limit')
-          );
-          container.appendChild(error);
-        }
-      },
-      
-      // Expand folder contents
-      expandFolder: (item, container) => {
-        let subContainer = document.getElementById(item.path);
-        if (!subContainer) {
-          subContainer = document.createElement("div");
-          subContainer.id = item.path;
-          subContainer.classList.add("folder");
-          container.appendChild(subContainer);
-        } else {
-          subContainer.innerHTML = '';
-        }
-        Explorer.loadFolders(item.path, item.path, false);
-      },
-      
-      // Show movies filtered by starting letter
-      showMoviesByLetter: async (letter) => {
-        const container = document.getElementById('explorer');
-        Navigation.pushState(`letter-${letter}`);
-        
-        UI.clearAndShowHeader(container, `← Back to Letters`, `Movies starting with "${letter}"`);
-        
-        const loading = Utils.createLoadingElement('Loading movies...');
-        container.appendChild(loading);
-
-        try {
           const data = await GitHubAPI.fetchFolderContents(CONFIG.moviesFolder);
           container.removeChild(loading);
 
@@ -1016,6 +992,56 @@
       }
     };
 
+    // Summary Functions
+    const Summary = {
+      // Create key-value summary display
+      createSummary: (data, filename) => {
+        const summarySection = document.getElementById('summarySection');
+        const summaryTitle = document.getElementById('summaryTitle');
+        const summaryGrid = document.getElementById('summaryGrid');
+        
+        // Clear previous content
+        summaryGrid.innerHTML = '';
+        
+        // Update title
+        summaryTitle.textContent = `Movie Summary - ${filename.replace('.json', '')}`;
+        
+        // Create summary items for non-array data
+        Object.keys(data).forEach(key => {
+          if (!Array.isArray(data[key])) {
+            const summaryItem = document.createElement('div');
+            summaryItem.className = 'summary-item';
+            
+            const keyElement = document.createElement('div');
+            keyElement.className = 'summary-key';
+            keyElement.textContent = Utils.formatDisplayText(key);
+            
+            const valueElement = document.createElement('div');
+            valueElement.className = 'summary-value';
+            
+            let value = data[key];
+            if (value === null || value === undefined) {
+              valueElement.textContent = '-';
+              valueElement.style.color = '#999';
+            } else if (typeof value === 'object') {
+              valueElement.textContent = JSON.stringify(value, null, 2);
+            } else if (typeof value === 'number') {
+              valueElement.textContent = value.toLocaleString();
+            } else {
+              valueElement.textContent = String(value);
+            }
+            
+            summaryItem.appendChild(keyElement);
+            summaryItem.appendChild(valueElement);
+            summaryGrid.appendChild(summaryItem);
+          }
+        });
+        
+        // Show summary section
+        summarySection.classList.add('show');
+      }
+    };
+
     // JSON Viewer Functions
     const JsonViewer = {
       // Show explorer section
@@ -1035,6 +1061,7 @@
       reset: () => {
         document.getElementById('loadingSection').style.display = 'none';
         document.getElementById('errorSection').style.display = 'none';
+        document.getElementById('summarySection').classList.remove('show');
         document.getElementById('buttonsContainer').classList.remove('show');
         document.getElementById('dataDisplay').classList.remove('show');
         document.getElementById('filterSection').classList.remove('show');
@@ -1048,12 +1075,14 @@
         
         const loadingSection = document.getElementById('loadingSection');
         const errorSection = document.getElementById('errorSection');
+        const summarySection = document.getElementById('summarySection');
         const buttonsContainer = document.getElementById('buttonsContainer');
         const dataDisplay = document.getElementById('dataDisplay');
 
         // Show loading
         loadingSection.style.display = 'block';
         errorSection.style.display = 'none';
+        summarySection.classList.remove('show');
         buttonsContainer.classList.remove('show');
         dataDisplay.classList.remove('show');
 
@@ -1071,6 +1100,11 @@
 
           // Success - show the interface
           loadingSection.style.display = 'none';
+          
+          // Create and show summary
+          Summary.createSummary(AppState.jsonData, filename);
+          
+          // Show buttons and data display
           buttonsContainer.classList.add('show');
           dataDisplay.classList.add('show');
 
@@ -1078,7 +1112,15 @@
           document.querySelector('.header p').textContent = `Viewing: ${filename}`;
 
           JsonViewer.createDataButtons();
-          JsonViewer.resetDataDisplay();
+          
+          // Auto-show moviesummary table if it exists
+          if (AppState.jsonData.moviesummary && Array.isArray(AppState.jsonData.moviesummary)) {
+            setTimeout(() => {
+              DataTable.showData('moviesummary');
+            }, 100);
+          } else {
+            JsonViewer.resetDataDisplay();
+          }
 
         } catch (error) {
           console.error('Error loading JSON:', error);
@@ -1124,6 +1166,11 @@
             const button = document.createElement('button');
             button.className = 'data-button';
             
+            // Highlight moviesummary button
+            if (key === 'moviesummary') {
+              button.classList.add('active');
+            }
+            
             const title = document.createElement('div');
             title.textContent = Utils.formatDisplayText(key);
             
@@ -1155,7 +1202,14 @@
         document.querySelectorAll('.data-button').forEach(btn => {
           btn.classList.remove('active');
         });
-        event.target.closest('.data-button').classList.add('active');
+        
+        // Find and activate the clicked button
+        const clickedButton = Array.from(document.querySelectorAll('.data-button')).find(btn => {
+          return btn.textContent.toLowerCase().includes(key.toLowerCase());
+        });
+        if (clickedButton) {
+          clickedButton.classList.add('active');
+        }
 
         AppState.currentDataKey = key;
         const data = AppState.jsonData[key];
@@ -1374,4 +1428,88 @@
     });
   </script>
 </body>
-</html>
+</html>API.fetchFolderContents(path);
+          let itemsAdded = 0;
+
+          data.forEach(item => {
+            // Root: only show movies folder
+            if (isRoot && item.type === "dir" && item.name !== CONFIG.moviesFolder) {
+              return;
+            }
+
+            if (item.type === "dir") {
+              const btn = document.createElement("button");
+              btn.textContent = "📂 " + item.name;
+              btn.className = "explorer-button";
+              
+              if (item.name === CONFIG.moviesFolder && isRoot) {
+                btn.setAttribute('data-action', 'movies');
+                btn.onclick = () => UI.showAlphabetNavigation();
+              } else {
+                btn.onclick = () => Explorer.expandFolder(item, container);
+              }
+              
+              container.appendChild(btn);
+              itemsAdded++;
+            }
+
+            // Show .json files only at the correct depth
+            if (item.type === "file" && item.name.endsWith(".json")) {
+              const depth = path.split("/").filter(p => p).length;
+              if (path.startsWith(`${CONFIG.moviesFolder}/`) && depth >= 2) {
+                const btn = document.createElement("button");
+                btn.textContent = "📄 " + item.name;
+                btn.className = "explorer-button file-button";
+                btn.onclick = () => JsonViewer.openJsonViewer(item.download_url, item.name);
+                container.appendChild(btn);
+                itemsAdded++;
+              }
+            }
+          });
+
+          if (itemsAdded === 0 && isRoot) {
+            const error = Utils.createErrorElement(
+              "No Movies Folder Found",
+              `Could not find the '${CONFIG.moviesFolder}' folder in ${CONFIG.owner}/${CONFIG.repo}. Make sure the repository is public and the folder exists.`,
+              false
+            );
+            container.appendChild(error);
+          }
+
+        } catch (err) {
+          console.error("Error loading folders:", err);
+          const error = Utils.createErrorElement(
+            "Error Loading Repository", 
+            err.message,
+            err.message.includes('403') || err.message.includes('rate limit')
+          );
+          container.appendChild(error);
+        }
+      },
+      
+      // Expand folder contents
+      expandFolder: (item, container) => {
+        let subContainer = document.getElementById(item.path);
+        if (!subContainer) {
+          subContainer = document.createElement("div");
+          subContainer.id = item.path;
+          subContainer.classList.add("folder");
+          container.appendChild(subContainer);
+        } else {
+          subContainer.innerHTML = '';
+        }
+        Explorer.loadFolders(item.path, item.path, false);
+      },
+      
+      // Show movies filtered by starting letter
+      showMoviesByLetter: async (letter) => {
+        const container = document.getElementById('explorer');
+        Navigation.pushState(`letter-${letter}`);
+        
+        UI.clearAndShowHeader(container, `← Back to Letters`, `Movies starting with "${letter}"`);
+        
+        const loading = Utils.createLoadingElement('Loading movies...');
+        container.appendChild(loading);
+
+        try {
+          const data = await GitHub
