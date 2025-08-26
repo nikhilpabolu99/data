@@ -585,7 +585,20 @@
       moviesFolder: "movies",
       // GitHub token for higher rate limits (5000 requests/hour vs 60)
       // Set to null to use without authentication (60 requests/hour limit)
-      githubToken: null // "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"
+      githubToken: null, // "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"
+      
+      // Configure which fields to show in Moviewise Summary
+      // Set to null to show all fields, or specify an array of field names
+      moviewiseSummaryFields: [
+        "MOVIE",
+        "TOTAL STATES",
+        "TOTAL SHOWS",
+        "BOOKEDSEATS",
+        "TOTALGROSS",
+        "OCCUPANCY"
+      ]
+      // Examples of other possible fields you might want to include:
+      // "genre", "director", "studio", "rating", "runtime", "screens"
     };
 
     const API_BASE = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents`;
@@ -1150,35 +1163,94 @@
         if (summaryData.length > 0) {
           const firstRecord = summaryData[0];
           
-          // If there's only one record, show all its key-value pairs
+          // If there's only one record, show specified or all key-value pairs
           if (summaryData.length === 1 && typeof firstRecord === 'object') {
-            Object.keys(firstRecord).forEach(key => {
-              const summaryItem = document.createElement('div');
-              summaryItem.className = 'summary-item';
-              summaryItem.innerHTML = `
-                <div class="summary-key">${Utils.formatDisplayText(key)}</div>
-                <div class="summary-value">${Utils.formatValue(firstRecord[key])}</div>
-              `;
-              container.appendChild(summaryItem);
-            });
+            SummaryDisplay.displaySelectedFields(firstRecord, container);
           } else {
-            // Multiple records - show aggregate information
-            SummaryDisplay.displayAggregateMovieData(summaryData, container);
+            // Multiple records - show aggregate information for selected fields
+            SummaryDisplay.displayAggregateMovieDataFiltered(summaryData, container);
           }
         }
       },
       
-      // Display aggregate movie data for multiple records
-      displayAggregateMovieData: (summaryData, container) => {
-        // Get all unique keys from all objects
-        const allKeys = new Set();
-        summaryData.forEach(item => {
-          if (typeof item === 'object' && item !== null) {
-            Object.keys(item).forEach(key => allKeys.add(key));
-          }
+      // Display only selected fields from a single record
+      displaySelectedFields: (record, container) => {
+        let fieldsToShow = [];
+        
+        if (CONFIG.moviewiseSummaryFields && Array.isArray(CONFIG.moviewiseSummaryFields)) {
+          // Show only specified fields
+          fieldsToShow = CONFIG.moviewiseSummaryFields.filter(field => 
+            record.hasOwnProperty(field) || record.hasOwnProperty(field.toLowerCase()) ||
+            Object.keys(record).some(key => key.toLowerCase() === field.toLowerCase())
+          );
+          
+          // Match fields with actual keys (case-insensitive)
+          fieldsToShow = fieldsToShow.map(field => {
+            const exactMatch = Object.keys(record).find(key => key === field);
+            if (exactMatch) return exactMatch;
+            
+            const caseInsensitiveMatch = Object.keys(record).find(key => 
+              key.toLowerCase() === field.toLowerCase()
+            );
+            return caseInsensitiveMatch || field;
+          }).filter(field => record.hasOwnProperty(field));
+        } else {
+          // Show all fields
+          fieldsToShow = Object.keys(record);
+        }
+        
+        // Display the selected fields
+        fieldsToShow.forEach(key => {
+          const summaryItem = document.createElement('div');
+          summaryItem.className = 'summary-item';
+          summaryItem.innerHTML = `
+            <div class="summary-key">${Utils.formatDisplayText(key)}</div>
+            <div class="summary-value">${Utils.formatValue(record[key])}</div>
+          `;
+          container.appendChild(summaryItem);
         });
         
-        const keys = Array.from(allKeys);
+        // Show message if no fields were found
+        if (fieldsToShow.length === 0) {
+          const noDataItem = document.createElement('div');
+          noDataItem.className = 'summary-item';
+          noDataItem.innerHTML = `
+            <div class="summary-key">Notice</div>
+            <div class="summary-value">No matching fields found. Check CONFIG.moviewiseSummaryFields.</div>
+          `;
+          container.appendChild(noDataItem);
+        }
+      },
+      
+      // Display aggregate movie data for multiple records (filtered fields)
+      displayAggregateMovieDataFiltered: (summaryData, container) => {
+        // Get keys to show based on configuration
+        let keysToShow = [];
+        
+        if (CONFIG.moviewiseSummaryFields && Array.isArray(CONFIG.moviewiseSummaryFields)) {
+          // Use configured fields
+          const allKeys = new Set();
+          summaryData.forEach(item => {
+            if (typeof item === 'object' && item !== null) {
+              Object.keys(item).forEach(key => allKeys.add(key));
+            }
+          });
+          
+          keysToShow = CONFIG.moviewiseSummaryFields.filter(field => {
+            return Array.from(allKeys).some(key => key.toLowerCase() === field.toLowerCase());
+          }).map(field => {
+            return Array.from(allKeys).find(key => key.toLowerCase() === field.toLowerCase());
+          }).filter(Boolean);
+        } else {
+          // Use all keys
+          const allKeys = new Set();
+          summaryData.forEach(item => {
+            if (typeof item === 'object' && item !== null) {
+              Object.keys(item).forEach(key => allKeys.add(key));
+            }
+          });
+          keysToShow = Array.from(allKeys);
+        }
         
         // Show total count first
         const countItem = document.createElement('div');
@@ -1189,8 +1261,8 @@
         `;
         container.appendChild(countItem);
         
-        // For each key, show some aggregate info
-        keys.forEach(key => {
+        // For each selected key, show aggregate info
+        keysToShow.forEach(key => {
           const values = summaryData.map(item => item[key]).filter(val => val != null);
           
           if (values.length > 0) {
@@ -1220,6 +1292,17 @@
             container.appendChild(summaryItem);
           }
         });
+        
+        // Show message if no configured fields were found
+        if (keysToShow.length === 0 && CONFIG.moviewiseSummaryFields) {
+          const noDataItem = document.createElement('div');
+          noDataItem.className = 'summary-item';
+          noDataItem.innerHTML = `
+            <div class="summary-key">Notice</div>
+            <div class="summary-value">No matching fields found. Check CONFIG.moviewiseSummaryFields configuration.</div>
+          `;
+          container.appendChild(noDataItem);
+        }
       },
       
       // Display general summary (fallback)
