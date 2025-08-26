@@ -153,6 +153,65 @@
       text-align: center;
     }
 
+    /* Summary Display Styles */
+    .summary-display {
+      background: linear-gradient(135deg, #f8f9ff 0%, #e6f3ff 100%);
+      border: 2px solid #4facfe;
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 25px;
+      display: none;
+    }
+
+    .summary-display.show {
+      display: block;
+    }
+
+    .summary-title {
+      color: #333;
+      font-size: 1.4em;
+      font-weight: 600;
+      margin-bottom: 15px;
+      text-align: center;
+      border-bottom: 2px solid #4facfe;
+      padding-bottom: 10px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+    }
+
+    .summary-item {
+      background: white;
+      padding: 12px 15px;
+      border-radius: 8px;
+      border-left: 4px solid #4facfe;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+    }
+
+    .summary-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(79, 172, 254, 0.15);
+    }
+
+    .summary-key {
+      font-weight: 600;
+      color: #333;
+      font-size: 0.9em;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .summary-value {
+      color: #666;
+      font-size: 1em;
+      word-break: break-word;
+    }
+
     /* JSON Viewer Styles */
     .json-viewer-section {
       padding: 30px;
@@ -239,6 +298,15 @@
 
     .data-button.active {
       background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .data-button.moviewise-summary {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+      font-weight: 700;
+    }
+
+    .data-button.moviewise-summary:hover {
+      background: linear-gradient(135deg, #ee5a24 0%, #ff6b6b 100%);
     }
 
     .record-count {
@@ -412,6 +480,10 @@
         grid-template-columns: 1fr;
       }
 
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+
       .data-header {
         flex-direction: column;
         align-items: flex-start;
@@ -455,6 +527,12 @@
       </div>
 
       <div id="errorSection" style="display: none;"></div>
+
+      <!-- Summary Display Section -->
+      <div class="summary-display" id="summaryDisplay">
+        <div class="summary-title">📊 Data Summary</div>
+        <div class="summary-grid" id="summaryGrid"></div>
+      </div>
 
       <div class="buttons-container" id="buttonsContainer">
         <h3>📋 Available Data Tables</h3>
@@ -565,6 +643,20 @@
           </div>
         `;
         return errorDiv;
+      },
+
+      // Format value for display
+      formatValue: (value) => {
+        if (value === null || value === undefined) {
+          return 'N/A';
+        }
+        if (typeof value === 'number') {
+          return value.toLocaleString();
+        }
+        if (typeof value === 'object') {
+          return JSON.stringify(value);
+        }
+        return String(value);
       }
     };
 
@@ -1016,6 +1108,72 @@
       }
     };
 
+    // Summary Display Functions
+    const SummaryDisplay = {
+      // Create and show summary from JSON data
+      createSummary: (jsonData) => {
+        const summaryDisplay = document.getElementById('summaryDisplay');
+        const summaryGrid = document.getElementById('summaryGrid');
+        
+        // Clear existing summary
+        summaryGrid.innerHTML = '';
+        
+        // Extract summary information
+        const summaryItems = [];
+        
+        // Count arrays and their lengths
+        Object.keys(jsonData).forEach(key => {
+          if (Array.isArray(jsonData[key])) {
+            summaryItems.push({
+              key: Utils.formatDisplayText(key),
+              value: `${jsonData[key].length} records`
+            });
+          } else if (typeof jsonData[key] !== 'object') {
+            summaryItems.push({
+              key: Utils.formatDisplayText(key),
+              value: Utils.formatValue(jsonData[key])
+            });
+          }
+        });
+        
+        // Add total data types
+        const totalArrays = Object.values(jsonData).filter(val => Array.isArray(val)).length;
+        const totalRecords = Object.values(jsonData)
+          .filter(val => Array.isArray(val))
+          .reduce((sum, arr) => sum + arr.length, 0);
+        
+        if (totalArrays > 0) {
+          summaryItems.unshift({
+            key: 'Total Data Tables',
+            value: totalArrays.toString()
+          });
+          summaryItems.unshift({
+            key: 'Total Records',
+            value: totalRecords.toLocaleString()
+          });
+        }
+        
+        // Create summary items
+        summaryItems.forEach(item => {
+          const summaryItem = document.createElement('div');
+          summaryItem.className = 'summary-item';
+          summaryItem.innerHTML = `
+            <div class="summary-key">${item.key}</div>
+            <div class="summary-value">${item.value}</div>
+          `;
+          summaryGrid.appendChild(summaryItem);
+        });
+        
+        // Show summary display
+        summaryDisplay.classList.add('show');
+      },
+      
+      // Hide summary display
+      hide: () => {
+        document.getElementById('summaryDisplay').classList.remove('show');
+      }
+    };
+
     // JSON Viewer Functions
     const JsonViewer = {
       // Show explorer section
@@ -1040,6 +1198,7 @@
         document.getElementById('filterSection').classList.remove('show');
         document.getElementById('noData').style.display = 'block';
         document.getElementById('dataTable').style.display = 'none';
+        SummaryDisplay.hide();
       },
 
       // Open JSON viewer with file URL
@@ -1056,6 +1215,7 @@
         errorSection.style.display = 'none';
         buttonsContainer.classList.remove('show');
         dataDisplay.classList.remove('show');
+        SummaryDisplay.hide();
 
         try {
           AppState.jsonData = await GitHubAPI.fetchJsonFile(url);
@@ -1076,6 +1236,9 @@
 
           // Update header title
           document.querySelector('.header p').textContent = `Viewing: ${filename}`;
+
+          // Show summary first
+          SummaryDisplay.createSummary(AppState.jsonData);
 
           JsonViewer.createDataButtons();
           JsonViewer.resetDataDisplay();
@@ -1122,7 +1285,15 @@
         Object.keys(AppState.jsonData).forEach(key => {
           if (Array.isArray(AppState.jsonData[key])) {
             const button = document.createElement('button');
-            button.className = 'data-button';
+            
+            // Check if this is the moviewise summary button
+            const isMoviewiseSummary = key.toLowerCase().includes('moviewise') && key.toLowerCase().includes('summary');
+            
+            if (isMoviewiseSummary) {
+              button.className = 'data-button moviewise-summary';
+            } else {
+              button.className = 'data-button';
+            }
             
             const title = document.createElement('div');
             title.textContent = Utils.formatDisplayText(key);
