@@ -349,6 +349,72 @@
       font-weight: 600;
     }
 
+    .data-actions {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .download-btn {
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.9em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .download-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+      background: linear-gradient(135deg, #20c997 0%, #28a745 100%);
+    }
+
+    .download-btn:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* Full table capture styles */
+    .table-capture-container {
+      position: absolute;
+      left: -9999px;
+      top: -9999px;
+      background: white;
+      z-index: -1;
+    }
+
+    .table-capture-container table {
+      width: auto;
+      min-width: unset;
+      font-size: 12px;
+      border-collapse: collapse;
+    }
+
+    .table-capture-container th,
+    .table-capture-container td {
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      white-space: nowrap;
+      font-size: 11px;
+    }
+
+    .table-capture-container th {
+      background: linear-gradient(135deg, #f8f9ff 0%, #e6f3ff 100%);
+      font-weight: 600;
+      position: static;
+    }
+
     .filter-section {
       background: linear-gradient(135deg, #f8f9ff 0%, #e6f3ff 100%);
       padding: 20px;
@@ -543,6 +609,9 @@
         <div class="data-header">
           <h3 class="data-title" id="dataTitle">Select a data table</h3>
           <div class="data-actions">
+            <button class="download-btn" id="downloadTableBtn" onclick="downloadTableAsImage()" style="display: none;">
+              📥 Download Table
+            </button>
             <span class="data-count" id="dataCount">0 records</span>
           </div>
         </div>
@@ -576,6 +645,7 @@
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script>
     // Configuration - Easy to modify
     const CONFIG = {
@@ -590,12 +660,11 @@
       // Configure which fields to show in Moviewise Summary
       // Set to null to show all fields, or specify an array of field names
       moviewiseSummaryFields: [
-        "MOVIE",
-        "TOTAL STATES",
-        "TOTAL SHOWS",
-        "BOOKEDSEATS",
-        "TOTALGROSS",
-        "OCCUPANCY"
+        "movie_name",
+        "total_gross",
+        "opening_weekend",
+        "release_date",
+        "budget"
       ]
       // Examples of other possible fields you might want to include:
       // "genre", "director", "studio", "rating", "runtime", "screens"
@@ -1157,7 +1226,7 @@
       // Display moviewise summary data in key:value format
       displayMoviewiseSummaryData: (summaryData, container) => {
         // Update title to indicate this is moviewise summary
-        document.querySelector('.summary-title').textContent = 'Movie Summary';
+        document.querySelector('.summary-title').textContent = '📊 Moviewise Summary Data';
         
         // If it's an array with objects, display the first object's data or aggregate data
         if (summaryData.length > 0) {
@@ -1532,6 +1601,9 @@
         document.getElementById('dataTitle').textContent = Utils.formatDisplayText(key);
         document.getElementById('dataCount').textContent = `${data.length} records`;
 
+        // Show download button
+        document.getElementById('downloadTableBtn').style.display = 'block';
+
         // Show filter section
         document.getElementById('filterSection').classList.add('show');
 
@@ -1551,6 +1623,7 @@
         document.getElementById('dataTitle').textContent = Utils.formatDisplayText(key);
         document.getElementById('dataCount').textContent = '0 records';
         document.getElementById('filterSection').classList.remove('show');
+        document.getElementById('downloadTableBtn').style.display = 'none';
         
         const noData = document.getElementById('noData');
         noData.style.display = 'block';
@@ -1667,6 +1740,88 @@
         });
 
         DataTable.createTable(AppState.filteredData);
+      },
+
+      // Create a full table for capture (all data, no height limits)
+      createFullTable: (data) => {
+        if (data.length === 0) return null;
+
+        // Get all unique keys
+        const allKeys = new Set();
+        data.forEach(item => {
+          if (typeof item === 'object' && item !== null) {
+            Object.keys(item).forEach(key => allKeys.add(key));
+          }
+        });
+        const keys = Array.from(allKeys);
+
+        // Create table element
+        const table = document.createElement('table');
+        table.style.cssText = `
+          width: auto;
+          border-collapse: collapse;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          font-size: 12px;
+          background: white;
+          margin: 20px;
+        `;
+
+        // Create header
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        keys.forEach(key => {
+          const th = document.createElement('th');
+          th.textContent = Utils.formatDisplayText(key);
+          th.style.cssText = `
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            background: linear-gradient(135deg, #f8f9ff 0%, #e6f3ff 100%);
+            font-weight: 600;
+            text-align: left;
+            white-space: nowrap;
+            font-size: 11px;
+          `;
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        // Create body
+        const tbody = document.createElement('tbody');
+        data.forEach((item, index) => {
+          const row = document.createElement('tr');
+          if (index % 2 === 0) {
+            row.style.backgroundColor = 'rgba(248, 251, 255, 0.5)';
+          }
+          
+          keys.forEach(key => {
+            const td = document.createElement('td');
+            let value = item[key];
+            
+            if (value === null || value === undefined) {
+              td.textContent = '-';
+              td.style.color = '#999';
+            } else if (typeof value === 'number') {
+              td.textContent = value.toLocaleString();
+            } else if (typeof value === 'object') {
+              td.textContent = JSON.stringify(value);
+            } else {
+              td.textContent = String(value);
+            }
+            
+            td.style.cssText = `
+              padding: 8px 10px;
+              border: 1px solid #ddd;
+              white-space: nowrap;
+              font-size: 11px;
+            `;
+            row.appendChild(td);
+          });
+          tbody.appendChild(row);
+        });
+        table.appendChild(tbody);
+
+        return table;
       }
     };
 
@@ -1724,6 +1879,99 @@
 
     function clearFilters() {
       Filters.clear();
+    }
+
+    // Download table as image function
+    async function downloadTableAsImage() {
+      const downloadBtn = document.getElementById('downloadTableBtn');
+      
+      // Disable button and show loading state
+      downloadBtn.disabled = true;
+      downloadBtn.innerHTML = '⏳ Generating...';
+      
+      try {
+        // Use original data to create full table (not filtered data)
+        const dataToCapture = AppState.originalData;
+        
+        if (!dataToCapture || dataToCapture.length === 0) {
+          throw new Error('No data available to download');
+        }
+
+        // Create a full table for capture
+        const fullTable = DataTable.createFullTable(dataToCapture);
+        if (!fullTable) {
+          throw new Error('Failed to create table for capture');
+        }
+
+        // Create container for the table
+        const captureContainer = document.createElement('div');
+        captureContainer.style.cssText = `
+          position: absolute;
+          left: -9999px;
+          top: 0;
+          background: white;
+          padding: 20px;
+          z-index: -1;
+        `;
+
+        // Add title
+        const title = document.createElement('h2');
+        title.textContent = document.getElementById('dataTitle').textContent;
+        title.style.cssText = `
+          margin: 0 0 20px 0;
+          color: #333;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          text-align: center;
+        `;
+        
+        captureContainer.appendChild(title);
+        captureContainer.appendChild(fullTable);
+        document.body.appendChild(captureContainer);
+
+        // Use html2canvas to capture the table
+        const canvas = await html2canvas(captureContainer, {
+          backgroundColor: '#ffffff',
+          scale: 2, // Higher resolution
+          useCORS: true,
+          allowTaint: true,
+          scrollX: 0,
+          scrollY: 0,
+          width: fullTable.offsetWidth + 40, // Add padding
+          height: captureContainer.offsetHeight
+        });
+
+        // Remove the temporary container
+        document.body.removeChild(captureContainer);
+
+        // Create download link
+        const link = document.createElement('a');
+        link.download = `${AppState.currentDataKey || 'table'}_${new Date().toISOString().split('T')[0]}.png`;
+        link.href = canvas.toDataURL('image/png');
+        
+        // Trigger download
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Success feedback
+        downloadBtn.innerHTML = '✅ Downloaded!';
+        setTimeout(() => {
+          downloadBtn.innerHTML = '📥 Download Table';
+          downloadBtn.disabled = false;
+        }, 2000);
+
+      } catch (error) {
+        console.error('Error downloading table:', error);
+        
+        // Error feedback
+        downloadBtn.innerHTML = '❌ Error';
+        setTimeout(() => {
+          downloadBtn.innerHTML = '📥 Download Table';
+          downloadBtn.disabled = false;
+        }, 2000);
+        
+        alert('Error downloading table: ' + error.message);
+      }
     }
 
     // Initialize Application
