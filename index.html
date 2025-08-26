@@ -1118,7 +1118,114 @@
         // Clear existing summary
         summaryGrid.innerHTML = '';
         
-        // Extract summary information
+        // First, check if we have moviewise summary data
+        const moviewiseSummaryKey = SummaryDisplay.findMoviewiseSummaryKey(jsonData);
+        
+        if (moviewiseSummaryKey && Array.isArray(jsonData[moviewiseSummaryKey]) && jsonData[moviewiseSummaryKey].length > 0) {
+          // Display moviewise summary data
+          SummaryDisplay.displayMoviewiseSummaryData(jsonData[moviewiseSummaryKey], summaryGrid);
+        } else {
+          // Fallback to general summary
+          SummaryDisplay.displayGeneralSummary(jsonData, summaryGrid);
+        }
+        
+        // Show summary display
+        summaryDisplay.classList.add('show');
+      },
+      
+      // Find moviewise summary key
+      findMoviewiseSummaryKey: (jsonData) => {
+        return Object.keys(jsonData).find(key => {
+          const lowerKey = key.toLowerCase();
+          return lowerKey.includes('moviewise') && lowerKey.includes('summary');
+        });
+      },
+      
+      // Display moviewise summary data in key:value format
+      displayMoviewiseSummaryData: (summaryData, container) => {
+        // Update title to indicate this is moviewise summary
+        document.querySelector('.summary-title').textContent = '📊 Moviewise Summary Data';
+        
+        // If it's an array with objects, display the first object's data or aggregate data
+        if (summaryData.length > 0) {
+          const firstRecord = summaryData[0];
+          
+          // If there's only one record, show all its key-value pairs
+          if (summaryData.length === 1 && typeof firstRecord === 'object') {
+            Object.keys(firstRecord).forEach(key => {
+              const summaryItem = document.createElement('div');
+              summaryItem.className = 'summary-item';
+              summaryItem.innerHTML = `
+                <div class="summary-key">${Utils.formatDisplayText(key)}</div>
+                <div class="summary-value">${Utils.formatValue(firstRecord[key])}</div>
+              `;
+              container.appendChild(summaryItem);
+            });
+          } else {
+            // Multiple records - show aggregate information
+            SummaryDisplay.displayAggregateMovieData(summaryData, container);
+          }
+        }
+      },
+      
+      // Display aggregate movie data for multiple records
+      displayAggregateMovieData: (summaryData, container) => {
+        // Get all unique keys from all objects
+        const allKeys = new Set();
+        summaryData.forEach(item => {
+          if (typeof item === 'object' && item !== null) {
+            Object.keys(item).forEach(key => allKeys.add(key));
+          }
+        });
+        
+        const keys = Array.from(allKeys);
+        
+        // Show total count first
+        const countItem = document.createElement('div');
+        countItem.className = 'summary-item';
+        countItem.innerHTML = `
+          <div class="summary-key">Total Movies</div>
+          <div class="summary-value">${summaryData.length}</div>
+        `;
+        container.appendChild(countItem);
+        
+        // For each key, show some aggregate info
+        keys.forEach(key => {
+          const values = summaryData.map(item => item[key]).filter(val => val != null);
+          
+          if (values.length > 0) {
+            let displayValue = '';
+            
+            // Handle numeric values
+            if (values.every(val => typeof val === 'number' || !isNaN(Number(val)))) {
+              const numValues = values.map(val => Number(val));
+              const total = numValues.reduce((sum, val) => sum + val, 0);
+              const avg = total / numValues.length;
+              displayValue = `Total: ${total.toLocaleString()}, Avg: ${Math.round(avg).toLocaleString()}`;
+            } else {
+              // Handle string/categorical values
+              const uniqueValues = [...new Set(values)].slice(0, 3); // Show first 3 unique values
+              displayValue = uniqueValues.join(', ');
+              if (values.length > uniqueValues.length) {
+                displayValue += ` (+${values.length - uniqueValues.length} more)`;
+              }
+            }
+            
+            const summaryItem = document.createElement('div');
+            summaryItem.className = 'summary-item';
+            summaryItem.innerHTML = `
+              <div class="summary-key">${Utils.formatDisplayText(key)}</div>
+              <div class="summary-value">${displayValue}</div>
+            `;
+            container.appendChild(summaryItem);
+          }
+        });
+      },
+      
+      // Display general summary (fallback)
+      displayGeneralSummary: (jsonData, container) => {
+        document.querySelector('.summary-title').textContent = '📊 Data Summary';
+        
         const summaryItems = [];
         
         // Count arrays and their lengths
@@ -1161,11 +1268,8 @@
             <div class="summary-key">${item.key}</div>
             <div class="summary-value">${item.value}</div>
           `;
-          summaryGrid.appendChild(summaryItem);
+          container.appendChild(summaryItem);
         });
-        
-        // Show summary display
-        summaryDisplay.classList.add('show');
       },
       
       // Hide summary display
