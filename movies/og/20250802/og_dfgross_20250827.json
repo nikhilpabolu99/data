@@ -1,7 +1,7 @@
 {
   "movie_name": "og",
   "date": "20250827",
-  "processing_timestamp": "2025-08-27T16:13:47.433516",
+  "processing_timestamp": "2025-08-27T16:27:10.217493",
   "total_records": 127,
   "total_states": 8,
   "total_cities": 32,
@@ -3082,16 +3082,16 @@
   ],
   "moviewise_summary": [
     {
-      "movie_name": "og",
+      "MOVIE": "og",
       "date": "20250827",
-      "total_states": 8,
+      "TOTALSTATES": 8,
       "total_cities": 32,
       "total_theaters": 34,
-      "total_showtimes": 127,
-      "total_gross": 51220.52,
-      "total_seats_sold": 1748,
+      "TOTALSHOWS": 127,
+      "TOTALGROSS": 51220.52,
+      "BOOKEDSEATS": 1748,
       "total_seat_count": 16074,
-      "occupancy_percent": 10.87
+      "OCCUPANCY": 10.87
     }
   ],
   "status_400_failures": [],
