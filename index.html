@@ -1882,7 +1882,7 @@
       Filters.clear();
     }
 
-    // Download table as image function
+// Download table as image function
     async function downloadTableAsImage() {
       const downloadBtn = document.getElementById('downloadTableBtn');
       
@@ -1927,22 +1927,80 @@
         
         captureContainer.appendChild(title);
         captureContainer.appendChild(fullTable);
-        document.body.appendChild(captureContainer);
+        
+        // Add watermarks
+        const watermarkContainer = document.createElement('div');
+        watermarkContainer.style.cssText = `
+          position: relative;
+          width: 100%;
+          height: 100%;
+        `;
+        
+        // Top-left watermark
+        const topLeftWatermark = document.createElement('div');
+        topLeftWatermark.textContent = '@CineNationBO';
+        topLeftWatermark.style.cssText = `
+          position: absolute;
+          top: 5px;
+          left: 5px;
+          font-size: 14px;
+          color: rgba(102, 126, 234, 0.6);
+          font-weight: bold;
+          z-index: 10;
+          pointer-events: none;
+        `;
+        
+        // Center watermark
+        const centerWatermark = document.createElement('div');
+        centerWatermark.textContent = '@CineNationBO';
+        centerWatermark.style.cssText = `
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%) rotate(-20deg);
+          font-size: 48px;
+          color: rgba(102, 126, 234, 0.08);
+          font-weight: bold;
+          z-index: 5;
+          pointer-events: none;
+          white-space: nowrap;
+        `;
+        
+        // Bottom-right watermark
+        const bottomRightWatermark = document.createElement('div');
+        bottomRightWatermark.textContent = '@CineNationBO';
+        bottomRightWatermark.style.cssText = `
+          position: absolute;
+          bottom: 5px;
+          right: 5px;
+          font-size: 14px;
+          color: rgba(102, 126, 234, 0.6);
+          font-weight: bold;
+          z-index: 10;
+          pointer-events: none;
+        `;
+        
+        watermarkContainer.appendChild(captureContainer);
+        watermarkContainer.appendChild(topLeftWatermark);
+        watermarkContainer.appendChild(centerWatermark);
+        watermarkContainer.appendChild(bottomRightWatermark);
+        
+        document.body.appendChild(watermarkContainer);
 
         // Use html2canvas to capture the table
-        const canvas = await html2canvas(captureContainer, {
+        const canvas = await html2canvas(watermarkContainer, {
           backgroundColor: '#ffffff',
           scale: 2, // Higher resolution
           useCORS: true,
           allowTaint: true,
           scrollX: 0,
           scrollY: 0,
-          width: fullTable.offsetWidth + 40, // Add padding
+          width: captureContainer.offsetWidth + 40, // Add padding
           height: captureContainer.offsetHeight
         });
 
         // Remove the temporary container
-        document.body.removeChild(captureContainer);
+        document.body.removeChild(watermarkContainer);
 
         // Create download link
         const link = document.createElement('a');
