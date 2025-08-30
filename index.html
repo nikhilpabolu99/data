@@ -431,9 +431,8 @@
     .filter-controls {
       display: flex;
       gap: 15px;
-      align-items: flex-end;
+      align-items: center;
       flex-wrap: wrap;
-      margin-bottom: 20px;
     }
 
     .filter-group {
@@ -480,135 +479,30 @@
       box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
     }
 
-    /* Column visibility controls */
-    .column-controls {
-      display: flex;
-      gap: 15px;
-      align-items: flex-end;
-      flex-wrap: wrap;
-      padding-top: 15px;
-      border-top: 1px solid #e0e8ff;
-    }
+.table-container {
+  overflow-x: auto;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  max-height: 500px;
+  overflow-y: auto;
+  position: relative;
+}
 
-    .column-dropdown {
-      position: relative;
-    }
-
-    .dropdown-toggle {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 0.9em;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .dropdown-toggle:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-    }
-
-    .dropdown-content {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      background: white;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-      z-index: 1000;
-      max-height: 300px;
-      overflow-y: auto;
-      min-width: 250px;
-      display: none;
-    }
-
-    .dropdown-content.show {
-      display: block;
-    }
-
-    .dropdown-item {
-      display: flex;
-      align-items: center;
-      padding: 10px 15px;
-      border-bottom: 1px solid #f0f0f0;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-
-    .dropdown-item:hover {
-      background-color: #f8f9ff;
-    }
-
-    .dropdown-item:last-child {
-      border-bottom: none;
-    }
-
-    .dropdown-item input[type="checkbox"] {
-      margin-right: 10px;
-    }
-
-    .dropdown-actions {
-      padding: 10px 15px;
-      background: #f8f9ff;
-      border-top: 1px solid #e0e8ff;
-      display: flex;
-      gap: 10px;
-      justify-content: space-between;
-    }
-
-    .dropdown-action-btn {
-      background: #4facfe;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-size: 0.8em;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-
-    .dropdown-action-btn:hover {
-      background: #3498db;
-    }
-
-    .dropdown-action-btn.secondary {
-      background: #6c757d;
-    }
-
-    .dropdown-action-btn.secondary:hover {
-      background: #5a6268;
-    }
-
-    .table-container {
-      overflow-x: auto;
-      background: white;
-      border-radius: 15px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-      max-height: 500px;
-      overflow-y: auto;
-      position: relative;
-    }
-
-    .table-watermark {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) rotate(-45deg);
-      font-size: 3em;
-      font-weight: bold;
-      color: rgba(79, 172, 254, 0.15);
-      pointer-events: none;
-      z-index: 10;
-      white-space: nowrap;
-      user-select: none;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+.table-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-45deg);
+  font-size: 3em;
+  font-weight: bold;
+  color: rgba(79, 172, 254, 0.15);
+  pointer-events: none;
+  z-index: 10;
+  white-space: nowrap;
+  user-select: none;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
 
     table {
       width: 100%;
@@ -678,7 +572,7 @@
         gap: 15px;
       }
 
-      .filter-controls, .column-controls {
+      .filter-controls {
         flex-direction: column;
         align-items: stretch;
       }
@@ -752,38 +646,18 @@
             </div>
             <button class="clear-filters-btn" onclick="clearFilters()">🗑️ Clear</button>
           </div>
-          
-          <!-- New Column Visibility Controls -->
-          <div class="column-controls">
-            <div class="filter-group">
-              <label>👁️ Column Visibility</label>
-              <div class="column-dropdown">
-                <button type="button" class="dropdown-toggle" onclick="toggleColumnDropdown()">
-                  Select Columns ▼
-                </button>
-                <div class="dropdown-content" id="columnDropdown">
-                  <div class="dropdown-actions">
-                    <button class="dropdown-action-btn" onclick="selectAllColumns()">Select All</button>
-                    <button class="dropdown-action-btn secondary" onclick="deselectAllColumns()">Deselect All</button>
-                  </div>
-                  <div id="columnCheckboxes"></div>
-                </div>
-              </div>
-            </div>
-            <button class="clear-filters-btn" onclick="resetColumnVisibility()">↩️ Reset Columns</button>
-          </div>
         </div>
         
         <div class="table-container" id="tableContainer">
-          <div class="table-watermark">@nikhilntr9</div>
-          <div class="no-data" id="noData">
-            Click on a data table button above to view its contents
-          </div>
-          <table id="dataTable" style="display: none;">
-            <thead id="tableHead"></thead>
-            <tbody id="tableBody"></tbody>
-          </table>
-        </div>
+  <div class="table-watermark">@nikhilntr9</div>
+  <div class="no-data" id="noData">
+    Click on a data table button above to view its contents
+  </div>
+  <table id="dataTable" style="display: none;">
+    <thead id="tableHead"></thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
       </div>
     </div>
   </div>
@@ -828,12 +702,7 @@
       currentDataKey: null,
       originalData: [],
       filteredData: [],
-      currentSort: { column: null, direction: 'asc' },
-      
-      // Column Visibility
-      allColumns: [],
-      visibleColumns: [],
-      isColumnDropdownOpen: false
+      currentSort: { column: null, direction: 'asc' }
     };
 
     // Utility Functions
@@ -1580,90 +1449,6 @@
       }
     };
 
-    // Column Visibility Functions
-    const ColumnVisibility = {
-      // Setup column visibility controls
-      setupColumnVisibility: (data) => {
-        if (!data || data.length === 0) return;
-        
-        // Get all unique keys from all objects
-        const allKeys = new Set();
-        data.forEach(item => {
-          if (typeof item === 'object' && item !== null) {
-            Object.keys(item).forEach(key => allKeys.add(key));
-          }
-        });
-        
-        AppState.allColumns = Array.from(allKeys);
-        AppState.visibleColumns = [...AppState.allColumns]; // Show all columns by default
-        
-        ColumnVisibility.populateColumnCheckboxes();
-      },
-      
-      // Populate column checkboxes
-      populateColumnCheckboxes: () => {
-        const checkboxContainer = document.getElementById('columnCheckboxes');
-        checkboxContainer.innerHTML = '';
-        
-        AppState.allColumns.forEach(column => {
-          const item = document.createElement('div');
-          item.className = 'dropdown-item';
-          
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.id = `col-${column}`;
-          checkbox.value = column;
-          checkbox.checked = AppState.visibleColumns.includes(column);
-          checkbox.addEventListener('change', ColumnVisibility.handleColumnToggle);
-          
-          const label = document.createElement('label');
-          label.htmlFor = `col-${column}`;
-          label.textContent = Utils.formatDisplayText(column);
-          label.style.cursor = 'pointer';
-          
-          item.appendChild(checkbox);
-          item.appendChild(label);
-          checkboxContainer.appendChild(item);
-        });
-      },
-      
-      // Handle column toggle
-      handleColumnToggle: (event) => {
-        const column = event.target.value;
-        const isChecked = event.target.checked;
-        
-        if (isChecked && !AppState.visibleColumns.includes(column)) {
-          AppState.visibleColumns.push(column);
-        } else if (!isChecked && AppState.visibleColumns.includes(column)) {
-          AppState.visibleColumns = AppState.visibleColumns.filter(col => col !== column);
-        }
-        
-        // Refresh table with new column visibility
-        DataTable.createTable(AppState.filteredData);
-      },
-      
-      // Select all columns
-      selectAll: () => {
-        AppState.visibleColumns = [...AppState.allColumns];
-        ColumnVisibility.populateColumnCheckboxes();
-        DataTable.createTable(AppState.filteredData);
-      },
-      
-      // Deselect all columns
-      deselectAll: () => {
-        AppState.visibleColumns = [];
-        ColumnVisibility.populateColumnCheckboxes();
-        DataTable.createTable(AppState.filteredData);
-      },
-      
-      // Reset column visibility
-      reset: () => {
-        AppState.visibleColumns = [...AppState.allColumns];
-        ColumnVisibility.populateColumnCheckboxes();
-        DataTable.createTable(AppState.filteredData);
-      }
-    };
-
     // JSON Viewer Functions
     const JsonViewer = {
       // Show explorer section
@@ -1688,7 +1473,6 @@
         document.getElementById('filterSection').classList.remove('show');
         document.getElementById('noData').style.display = 'block';
         document.getElementById('dataTable').style.display = 'none';
-        AppState.isColumnDropdownOpen = false;
         SummaryDisplay.hide();
       },
 
@@ -1763,3 +1547,478 @@
             </div>
           `;
         }
+
+        errorSection.innerHTML = errorMessage;
+        errorSection.style.display = 'block';
+      },
+
+      // Create data table buttons
+      createDataButtons: () => {
+        const buttonGrid = document.getElementById('buttonGrid');
+        buttonGrid.innerHTML = '';
+        
+        Object.keys(AppState.jsonData).forEach(key => {
+          if (Array.isArray(AppState.jsonData[key])) {
+            const button = document.createElement('button');
+            
+            // Check if this is the moviewise summary button
+            const isMoviewiseSummary = key.toLowerCase().includes('moviewise') && key.toLowerCase().includes('summary');
+            
+            if (isMoviewiseSummary) {
+              button.className = 'data-button moviewise-summary';
+            } else {
+              button.className = 'data-button';
+            }
+            
+            const title = document.createElement('div');
+            title.textContent = Utils.formatDisplayText(key);
+            
+            const count = document.createElement('span');
+            count.className = 'record-count';
+            count.textContent = `${AppState.jsonData[key].length} records`;
+            
+            button.appendChild(title);
+            button.appendChild(count);
+            button.addEventListener('click', () => DataTable.showData(key));
+            buttonGrid.appendChild(button);
+          }
+        });
+      },
+
+      // Reset data display
+      resetDataDisplay: () => {
+        document.getElementById('filterSection').classList.remove('show');
+        document.getElementById('noData').style.display = 'block';
+        document.getElementById('dataTable').style.display = 'none';
+      }
+    };
+
+    // Data Table Functions
+    const DataTable = {
+      // Show data for selected key
+      showData: (key) => {
+        // Update active button
+        document.querySelectorAll('.data-button').forEach(btn => {
+          btn.classList.remove('active');
+        });
+        event.target.closest('.data-button').classList.add('active');
+
+        AppState.currentDataKey = key;
+        const data = AppState.jsonData[key];
+        
+        if (!Array.isArray(data) || data.length === 0) {
+          DataTable.showNoData(key);
+          return;
+        }
+
+        // Store original data and reset filters
+        AppState.originalData = [...data];
+        AppState.filteredData = [...data];
+        AppState.currentSort = { column: null, direction: 'asc' };
+
+        // Update title and count
+        document.getElementById('dataTitle').textContent = Utils.formatDisplayText(key);
+        document.getElementById('dataCount').textContent = `${data.length} records`;
+
+        // Show download button
+        document.getElementById('downloadTableBtn').style.display = 'block';
+
+        // Show filter section
+        document.getElementById('filterSection').classList.add('show');
+
+        // Setup column filter options
+        DataTable.setupColumnFilter(data);
+
+        // Show table
+        document.getElementById('noData').style.display = 'none';
+        document.getElementById('dataTable').style.display = 'table';
+
+        // Create table
+        DataTable.createTable(AppState.filteredData);
+      },
+
+      // Show no data message
+      showNoData: (key) => {
+        document.getElementById('dataTitle').textContent = Utils.formatDisplayText(key);
+        document.getElementById('dataCount').textContent = '0 records';
+        document.getElementById('filterSection').classList.remove('show');
+        document.getElementById('downloadTableBtn').style.display = 'none';
+        
+        const noData = document.getElementById('noData');
+        noData.style.display = 'block';
+        noData.textContent = 'No data available for this table';
+        
+        document.getElementById('dataTable').style.display = 'none';
+      },
+
+      // Create HTML table from data
+      createTable: (data) => {
+        const tableHead = document.getElementById('tableHead');
+        const tableBody = document.getElementById('tableBody');
+        
+        // Clear previous content
+        tableHead.innerHTML = '';
+        tableBody.innerHTML = '';
+
+        if (data.length === 0) {
+          tableBody.innerHTML = '<tr><td colspan="100%" style="text-align: center; padding: 30px; color: #666;">No records match your filters</td></tr>';
+          return;
+        }
+
+        // Get all unique keys from all objects
+        const allKeys = new Set();
+        data.forEach(item => {
+          if (typeof item === 'object' && item !== null) {
+            Object.keys(item).forEach(key => allKeys.add(key));
+          }
+        });
+
+        const keys = Array.from(allKeys);
+
+        // Create header
+        const headerRow = document.createElement('tr');
+        keys.forEach(key => {
+          const th = document.createElement('th');
+          th.textContent = Utils.formatDisplayText(key);
+          th.onclick = () => DataTable.sortTable(key);
+          headerRow.appendChild(th);
+        });
+        tableHead.appendChild(headerRow);
+
+        // Create body rows
+        data.forEach(item => {
+          const row = document.createElement('tr');
+          keys.forEach(key => {
+            const td = document.createElement('td');
+            let value = item[key];
+            
+            if (value === null || value === undefined) {
+              td.textContent = '-';
+              td.style.color = '#999';
+            } else if (typeof value === 'number') {
+              td.textContent = value.toLocaleString();
+            } else if (typeof value === 'object') {
+              td.textContent = JSON.stringify(value);
+            } else {
+              td.textContent = String(value);
+            }
+            
+            row.appendChild(td);
+          });
+          tableBody.appendChild(row);
+        });
+      },
+
+      // Setup column filter dropdown
+      setupColumnFilter: (data) => {
+        const columnFilter = document.getElementById('columnFilter');
+        columnFilter.innerHTML = '<option value="">All Columns</option>';
+        
+        if (data.length === 0) return;
+
+        const allKeys = new Set();
+        data.forEach(item => {
+          if (typeof item === 'object' && item !== null) {
+            Object.keys(item).forEach(key => allKeys.add(key));
+          }
+        });
+
+        Array.from(allKeys).sort().forEach(key => {
+          const option = document.createElement('option');
+          option.value = key;
+          option.textContent = Utils.formatDisplayText(key);
+          columnFilter.appendChild(option);
+        });
+      },
+
+      // Sort table by column
+      sortTable: (column) => {
+        if (AppState.currentSort.column === column) {
+          AppState.currentSort.direction = AppState.currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+          AppState.currentSort.column = column;
+          AppState.currentSort.direction = 'asc';
+        }
+
+        AppState.filteredData.sort((a, b) => {
+          let aVal = a[column];
+          let bVal = b[column];
+
+          if (aVal == null && bVal == null) return 0;
+          if (aVal == null) return 1;
+          if (bVal == null) return -1;
+
+          if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+          if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+
+          let comparison = 0;
+          if (aVal > bVal) comparison = 1;
+          else if (aVal < bVal) comparison = -1;
+
+          return AppState.currentSort.direction === 'asc' ? comparison : -comparison;
+        });
+
+        DataTable.createTable(AppState.filteredData);
+      },
+
+      // Create a full table for capture (all data, no height limits)
+createFullTable: (data) => {
+  if (data.length === 0) return null;
+
+  // Get all unique keys
+  const allKeys = new Set();
+  data.forEach(item => {
+    if (typeof item === 'object' && item !== null) {
+      Object.keys(item).forEach(key => allKeys.add(key));
+    }
+  });
+  const keys = Array.from(allKeys);
+
+  // Create table element
+  const table = document.createElement('table');
+  table.style.cssText = `
+    width: auto;
+    border-collapse: collapse;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 12px;
+    background: white;
+    margin: 20px;
+    position: relative;
+  `;
+
+  // Create watermark for the table
+  const watermark = document.createElement('div');
+  watermark.textContent = '@nikhilntr9';
+  watermark.style.cssText = `
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    font-size: 3em;
+    font-weight: bold;
+    color: rgba(79, 172, 254, 0.2);
+    pointer-events: none;
+    z-index: 10;
+    white-space: nowrap;
+    user-select: none;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  `;
+  table.appendChild(watermark);
+
+  // Create header
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  keys.forEach(key => {
+    const th = document.createElement('th');
+    th.textContent = Utils.formatDisplayText(key);
+    th.style.cssText = `
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      background: linear-gradient(135deg, #f8f9ff 0%, #e6f3ff 100%);
+      font-weight: 600;
+      text-align: left;
+      white-space: nowrap;
+      font-size: 11px;
+      position: relative;
+    `;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  // Create body
+  const tbody = document.createElement('tbody');
+  data.forEach((item, index) => {
+    const row = document.createElement('tr');
+    if (index % 2 === 0) {
+      row.style.backgroundColor = 'rgba(248, 251, 255, 0.5)';
+    }
+    
+    keys.forEach(key => {
+      const td = document.createElement('td');
+      let value = item[key];
+      
+      if (value === null || value === undefined) {
+        td.textContent = '-';
+        td.style.color = '#999';
+      } else if (typeof value === 'number') {
+        td.textContent = value.toLocaleString();
+      } else if (typeof value === 'object') {
+        td.textContent = JSON.stringify(value);
+      } else {
+        td.textContent = String(value);
+      }
+      
+      td.style.cssText = `
+        padding: 8px 10px;
+        border: 1px solid #ddd;
+        white-space: nowrap;
+        font-size: 11px;
+        position: relative;
+      `;
+      row.appendChild(td);
+    });
+    tbody.appendChild(row);
+  });
+  table.appendChild(tbody);
+
+  return table;
+}
+    };
+
+    // Filter Functions
+    const Filters = {
+      // Apply current filters
+      apply: () => {
+        const searchInput = document.getElementById('searchInput').value.toLowerCase();
+        const columnFilter = document.getElementById('columnFilter').value;
+
+        AppState.filteredData = AppState.originalData.filter(item => {
+          let matchesSearch = true;
+          if (searchInput) {
+            if (columnFilter) {
+              const value = item[columnFilter];
+              matchesSearch = value != null && String(value).toLowerCase().includes(searchInput);
+            } else {
+              matchesSearch = Object.values(item).some(value => 
+                value != null && String(value).toLowerCase().includes(searchInput)
+              );
+            }
+          }
+          return matchesSearch;
+        });
+
+        if (AppState.currentSort.column) {
+          DataTable.sortTable(AppState.currentSort.column);
+        } else {
+          DataTable.createTable(AppState.filteredData);
+        }
+
+        document.getElementById('dataCount').textContent = `${AppState.filteredData.length} records`;
+      },
+
+      // Clear all filters
+      clear: () => {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('columnFilter').value = '';
+        AppState.currentSort = { column: null, direction: 'asc' };
+        
+        AppState.filteredData = [...AppState.originalData];
+        DataTable.createTable(AppState.filteredData);
+        document.getElementById('dataCount').textContent = `${AppState.filteredData.length} records`;
+      }
+    };
+
+    // Global Functions (for inline event handlers)
+    function showExplorer() {
+      JsonViewer.showExplorer();
+    }
+
+    function applyFilters() {
+      Filters.apply();
+    }
+
+    function clearFilters() {
+      Filters.clear();
+    }
+
+    // Download table as image function
+    async function downloadTableAsImage() {
+      const downloadBtn = document.getElementById('downloadTableBtn');
+      
+      // Disable button and show loading state
+      downloadBtn.disabled = true;
+      downloadBtn.innerHTML = '⏳ Generating...';
+      
+      try {
+        // Use original data to create full table (not filtered data)
+        const dataToCapture = AppState.originalData;
+        
+        if (!dataToCapture || dataToCapture.length === 0) {
+          throw new Error('No data available to download');
+        }
+
+        // Create a full table for capture
+        const fullTable = DataTable.createFullTable(dataToCapture);
+        if (!fullTable) {
+          throw new Error('Failed to create table for capture');
+        }
+
+        // Create container for the table
+        const captureContainer = document.createElement('div');
+        captureContainer.style.cssText = `
+          position: absolute;
+          left: -9999px;
+          top: 0;
+          background: white;
+          padding: 20px;
+          z-index: -1;
+        `;
+
+        // Add title
+        const title = document.createElement('h2');
+        title.textContent = document.getElementById('dataTitle').textContent;
+        title.style.cssText = `
+          margin: 0 0 20px 0;
+          color: #333;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          text-align: center;
+        `;
+        
+        captureContainer.appendChild(title);
+        captureContainer.appendChild(fullTable);
+        document.body.appendChild(captureContainer);
+
+        // Use html2canvas to capture the table
+        const canvas = await html2canvas(captureContainer, {
+          backgroundColor: '#ffffff',
+          scale: 2, // Higher resolution
+          useCORS: true,
+          allowTaint: true,
+          scrollX: 0,
+          scrollY: 0,
+          width: fullTable.offsetWidth + 40, // Add padding
+          height: captureContainer.offsetHeight
+        });
+
+        // Remove the temporary container
+        document.body.removeChild(captureContainer);
+
+        // Create download link
+        const link = document.createElement('a');
+        link.download = `${AppState.currentDataKey || 'table'}_${new Date().toISOString().split('T')[0]}.png`;
+        link.href = canvas.toDataURL('image/png');
+        
+        // Trigger download
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Success feedback
+        downloadBtn.innerHTML = '✅ Downloaded!';
+        setTimeout(() => {
+          downloadBtn.innerHTML = '📥 Download Table';
+          downloadBtn.disabled = false;
+        }, 2000);
+
+      } catch (error) {
+        console.error('Error downloading table:', error);
+        
+        // Error feedback
+        downloadBtn.innerHTML = '❌ Error';
+        setTimeout(() => {
+          downloadBtn.innerHTML = '📥 Download Table';
+          downloadBtn.disabled = false;
+        }, 2000);
+        
+        alert('Error downloading table: ' + error.message);
+      }
+    }
+
+    // Initialize Application
+    document.addEventListener('DOMContentLoaded', function() {
+      Explorer.initialize();
+    });
+  </script>
+</body>
+</html>
