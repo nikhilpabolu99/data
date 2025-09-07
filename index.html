@@ -993,7 +993,7 @@
             // Show .json files only at the correct depth
             if (item.type === "file" && item.name.endsWith(".json")) {
               const depth = path.split("/").filter(p => p).length;
-              if (path.startsWith(`${CONFIG.moviesFolder}/`) && depth >= 2) {
+              if (path.startsWith(`${CONFIG.moviesFolder}/`) && depth >= 1) {
                 const btn = document.createElement("button");
                 btn.textContent = "📄 " + item.name;
                 btn.className = "explorer-button file-button";
