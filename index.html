@@ -1114,10 +1114,10 @@
         }
       },
       
-      // Show contents of a subfolder
+// Show contents of any folder (handles unlimited depth)
       showSubFolder: async (path, folderName) => {
         const container = document.getElementById('explorer');
-        Navigation.pushState(`subfolder-${path}`);
+        Navigation.pushState(`folder-${path}`);
         
         UI.clearAndShowHeader(container, `← Back`, folderName);
         
@@ -1128,20 +1128,26 @@
           const data = await GitHubAPI.fetchFolderContents(path);
           container.removeChild(loading);
 
-          const jsonFiles = data.filter(item => item.type === "file" && item.name.endsWith(".json"));
-          
-          if (jsonFiles.length === 0) {
-            UI.showNoData(container, "No JSON files found in this folder");
-          } else {
-            jsonFiles.forEach(item => {
+          if (data.length === 0) {
+            UI.showNoData(container, "This folder is empty");
+            return;
+          }
+
+          // Show both folders and JSON files
+          data.forEach(item => {
+            if (item.type === "dir") {
+              const btn = UI.createButton("📂 " + item.name, "explorer-button");
+              btn.onclick = () => Explorer.showSubFolder(item.path, item.name);
+              container.appendChild(btn);
+            } else if (item.type === "file" && item.name.endsWith(".json")) {
               const btn = UI.createButton("📄 " + item.name, "explorer-button file-button");
               btn.onclick = () => JsonViewer.openJsonViewer(item.download_url, item.name);
               container.appendChild(btn);
-            });
-          }
+            }
+          });
 
         } catch (err) {
-          console.error("Error loading subfolder:", err);
+          console.error("Error loading folder:", err);
           container.removeChild(loading);
           const error = Utils.createErrorElement("Error Loading Folder", err.message);
           container.appendChild(error);
