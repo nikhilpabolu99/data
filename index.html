@@ -2,98 +2,207 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>MeherNolan</title>
+  <title>MeherNolan - Movie Collections</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>📊 MeherNolan</h1>
-      <p>Tracking Indian Films, Globally !</p>
-    </div>
-    <div>
-        Latest Releases:
-    </div>
-    <div class="latest-releases" id="latestReleases"></div>
-    <!-- File Explorer Section -->
-    <div class="explorer-section" id="explorerSection">
-      <h2>Everything about BoxOffice!</h2>
-      <div id="explorer"></div>
-    </div>
-
-    <!-- JSON Viewer Section -->
-    <div class="json-viewer-section" id="jsonViewerSection">
-      <button class="explorer-button back-button" id="backButton">
-        ← Back to Explorer
-      </button>
-    <div style="margin-bottom: 1em;">
-      <label for="releaseDate">Select Date:</label>
-      <input type="date" id="releaseDate" name="releaseDate" style="appearance: none; -webkit-appearance: none; background: url('https://cdn-icons-png.flaticon.com/512/747/747310.png') no-repeat right 10px center/24px 24px, white; padding-right: 40px; border: 1px solid #ccc; border-radius: 4px; height: 2.2em; font-size: 1em; cursor: pointer;" />
-    </div>
-      <div class="loading" id="loadingSection">
-        <div class="loading-spinner"></div>
-        <p>Loading JSON data...</p>
-      </div>
-
-      <div id="errorSection" style="display: none;"></div>
-
-      <!-- Summary Display Section -->
-      <div class="summary-display" id="summaryDisplay">
-        <div class="summary-title">📊 Data Summary</div>
-        <div class="summary-grid" id="summaryGrid"></div>
-      </div>
-
-      <div class="buttons-container" id="buttonsContainer">
-        <h3>📋 Available Data Tables</h3>
-        <div class="button-grid" id="buttonGrid"></div>
-      </div>
-
-      <div class="data-display" id="dataDisplay">
-        <div class="data-header">
-          <h3 class="data-title" id="dataTitle">Select a data table</h3>
-          <div class="data-actions">
-            <button class="download-btn" id="downloadTableBtn" style="display: none;">
-              📥 Download Table
-            </button>
-            <span class="data-count" id="dataCount">0 records</span>
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="navbar-container">
+      <a href="#home" class="navbar-brand">MeherNolan</a>
+      <ul class="navbar-menu" id="navbarMenu">
+        <li><a href="#home" class="navbar-link">Home</a></li>
+        <li class="dropdown">
+          <a href="#movies" class="navbar-link dropdown-toggle">Movies</a>
+          <div class="dropdown-menu">
+            <a href="#latest" class="dropdown-item">Latest Releases</a>
+            <a href="#collections" class="dropdown-item">Box Office Collections</a>
+            <a href="#analytics" class="dropdown-item">Analytics</a>
+            <a href="#trending" class="dropdown-item">Trending</a>
           </div>
-        </div>
+        </li>
+        <li class="dropdown">
+          <a href="#country" class="navbar-link dropdown-toggle">Country</a>
+          <div class="dropdown-menu">
+            <a href="#india" class="dropdown-item">India</a>
+            <a href="#usa" class="dropdown-item">USA</a>
+            <a href="#uk" class="dropdown-item">UK</a>
+            <a href="#canada" class="dropdown-item">Canada</a>
+            <a href="#australia" class="dropdown-item">Australia</a>
+          </div>
+        </li>
+        <li><a href="#about" class="navbar-link">About</a></li>
+        <li><a href="#contact" class="navbar-link">Contact</a></li>
+      </ul>
+      <div class="navbar-toggle" id="navbarToggle">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+  </nav>
 
-        <div class="filter-section" id="filterSection">
-          <div class="filter-controls">
-            <div class="filter-group">
-              <label for="searchInput">🔍 Search</label>
-              <input type="text" id="searchInput" class="filter-input" placeholder="Search in all columns..." />
+  <!-- Main Container -->
+  <div class="main-container">
+    <div class="container">
+      <!-- Hero Section -->
+      <section class="hero-section" id="home">
+        <div class="hero-content">
+          <h1 class="hero-title">MeherNolan</h1>
+          <p class="hero-subtitle">Tracking Indian Films Globally - Your Ultimate Box Office Data Hub</p>
+          <div class="hero-stats">
+            <div class="stat-item">
+              <div class="stat-number">500+</div>
+              <div class="stat-label">Movies Tracked</div>
             </div>
-            <div class="filter-group">
-              <label for="columnFilter">📋 Filter by Column</label>
-              <select id="columnFilter" class="filter-input">
-                <option value="">All Columns</option>
-              </select>
+            <div class="stat-item">
+              <div class="stat-number">15+</div>
+              <div class="stat-label">Countries</div>
             </div>
-            <button class="clear-filters-btn" id="clearFiltersBtn">🗑️ Clear</button>
+            <div class="stat-item">
+              <div class="stat-number">1M+</div>
+              <div class="stat-label">Data Points</div>
+            </div>
           </div>
         </div>
+      </section>
 
-        <div class="table-container" id="tableContainer">
-          <div class="table-watermark">@nikhilntr9</div>
-          <div class="no-data" id="noData">
-            Click on a data table button above to view its contents
-          </div>
-          <table id="dataTable" style="display: none;">
-            <thead id="tableHead"></thead>
-            <tbody id="tableBody"></tbody>
-          </table>
+      <!-- Latest Releases Section -->
+      <section class="latest-section" id="latest">
+        <div class="section-header">
+          <h2 class="section-title">Latest Releases</h2>
+          <p class="section-subtitle">Stay updated with the newest box office data</p>
         </div>
-      </div>
+        <div class="latest-releases" id="latestReleases"></div>
+      </section>
+
+      <!-- File Explorer Section -->
+      <section class="explorer-section" id="explorerSection">
+        <div class="explorer-content">
+          <div class="section-header">
+            <h2 class="section-title">Box Office Collections</h2>
+            <p class="section-subtitle">Explore comprehensive movie data by categories</p>
+          </div>
+          <div id="explorer"></div>
+        </div>
+      </section>
+
+      <!-- JSON Viewer Section -->
+      <section class="json-viewer-section" id="jsonViewerSection">
+        <div class="json-content">
+          <button class="explorer-button back-button" id="backButton">
+            ← Back to Explorer
+          </button>
+          
+          <div class="date-selector">
+            <label for="releaseDate">Select Date:</label>
+            <input type="date" id="releaseDate" name="releaseDate" />
+          </div>
+
+          <div class="loading" id="loadingSection">
+            <div class="loading-spinner"></div>
+            <p>Loading JSON data...</p>
+          </div>
+
+          <div id="errorSection" style="display: none;"></div>
+
+          <!-- Summary Display Section -->
+          <div class="summary-display" id="summaryDisplay">
+            <div class="summary-title">Data Summary</div>
+            <div class="summary-grid" id="summaryGrid"></div>
+          </div>
+
+          <div class="buttons-container" id="buttonsContainer">
+            <h3>Available Data Tables</h3>
+            <div class="button-grid" id="buttonGrid"></div>
+          </div>
+
+          <div class="data-display" id="dataDisplay">
+            <div class="data-header">
+              <h3 class="data-title" id="dataTitle">Select a data table</h3>
+              <div class="data-actions">
+                <button class="download-btn" id="downloadTableBtn" style="display: none;">
+                  Download Table
+                </button>
+                <span class="data-count" id="dataCount">0 records</span>
+              </div>
+            </div>
+
+            <div class="filter-section" id="filterSection">
+              <div class="filter-controls">
+                <div class="filter-group">
+                  <label for="searchInput">Search</label>
+                  <input type="text" id="searchInput" class="filter-input" placeholder="Search in all columns..." />
+                </div>
+                <div class="filter-group">
+                  <label for="columnFilter">Filter by Column</label>
+                  <select id="columnFilter" class="filter-input">
+                    <option value="">All Columns</option>
+                  </select>
+                </div>
+                <button class="clear-filters-btn" id="clearFiltersBtn">Clear</button>
+              </div>
+            </div>
+
+            <div class="table-container" id="tableContainer">
+              <div class="table-watermark">@nikhilntr9</div>
+              <div class="no-data" id="noData">
+                Click on a data table button above to view its contents
+              </div>
+              <table id="dataTable" style="display: none;">
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <div class="footer-content">
+          <div class="footer-section">
+            <h3>MeherNolan</h3>
+            <p>Your trusted source for comprehensive box office data and movie analytics.</p>
+          </div>
+          <div class="footer-section">
+            <h4>Quick Links</h4>
+            <ul>
+              <li><a href="#home">Home</a></li>
+              <li><a href="#latest">Latest Releases</a></li>
+              <li><a href="#collections">Collections</a></li>
+              <li><a href="#about">About</a></li>
+            </ul>
+          </div>
+          <div class="footer-section">
+            <h4>Countries</h4>
+            <ul>
+              <li><a href="#india">India</a></li>
+              <li><a href="#usa">USA</a></li>
+              <li><a href="#uk">UK</a></li>
+              <li><a href="#canada">Canada</a></li>
+            </ul>
+          </div>
+          <div class="footer-section">
+            <h4>Connect</h4>
+            <p>Follow us for the latest updates and insights.</p>
+            <div class="social-links">
+              <a href="#" class="social-link">Twitter</a>
+              <a href="#" class="social-link">LinkedIn</a>
+              <a href="#" class="social-link">GitHub</a>
+            </div>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>&copy; 2025 MeherNolan. All rights reserved. | Data sourced responsibly.</p>
+        </div>
+      </footer>
     </div>
   </div>
 
-  <!-- html2canvas (kept the same) -->
+  <!-- Scripts -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-  <!-- App JS -->
   <script src="app.js"></script>
 </body>
 </html>
