@@ -645,11 +645,6 @@ const LatestReleases = {
         "movie": "Mirai (USA)", 
         "image": "https://via.placeholder.com/200x300/ff6b6b/white?text=MIRAI",
         "url": "https://raw.githubusercontent.com/nikhilpabolu99/data/main/movies/mirai/20250907/mirai_usa_20250907.json"
-      },
-      {
-        "movie": "Pushpa 2 (Global)",
-        "image": "https://via.placeholder.com/200x300/28a745/white?text=PUSHPA+2",
-        "url": "https://raw.githubusercontent.com/nikhilpabolu99/data/main/movies/pushpa2/global/pushpa2_global_20250907.json"
       }
     ];
 
@@ -1560,4 +1555,5 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
+
 
