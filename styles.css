@@ -182,6 +182,24 @@ body {
   box-shadow: var(--shadow-medium);
   backdrop-filter: blur(10px);
 }
+#explorer {
+  display: flex;
+  flex-direction: column;
+}
+
+.back-button {
+  margin-bottom: 12px; /* space below the back button */
+  align-self: flex-start; /* align left */
+}
+
+.explorer .folder, 
+.explorer .file-button {
+  margin-top: 4px;
+  width: 100%;
+  max-width: 260px;  /* optional max width */
+  font-size: 14px;   /* smaller button text */
+  padding: 6px 10px; /* smaller padding */
+}
 
 /* Hero Section */
 .hero-section {
