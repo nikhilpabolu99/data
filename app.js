@@ -695,8 +695,15 @@ const LatestReleases = {
       movieCard.appendChild(overlay);
       
       //movieCard.onclick = () => JsonViewer.openJsonViewer(item.url, item.movie);
-      movieCard.onclick = () => Explorer.showMovieFolder(`movies/${item.movieFolderName}`, item.movieDisplayName);
+      //movieCard.onclick = () => Explorer.showMovieFolder(`movies/${item.movieFolderName}`, item.movieDisplayName);
       // movieCard.onclick = () => Explorer.showMovieFolder(`movies/${item.folder}`, item.movie);
+      movieCard.onclick = async () => {
+  await Explorer.showMovieFolder(`movies/${item.movieFolderName}`, item.movieDisplayName);
+  const explorerContainer = document.getElementById('explorer');
+  if (explorerContainer) {
+    explorerContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+};
 
 
       container.appendChild(movieCard);
@@ -1532,6 +1539,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
+
 
 
 
