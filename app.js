@@ -640,7 +640,8 @@ const LatestReleases = {
       },
       {
         "movie": "Mirai (USA)", 
-        "image": "https://via.placeholder.com/200x300/ff6b6b/white?text=MIRAI",
+        //"image": "https://via.placeholder.com/200x300/ff6b6b/white?text=MIRAI",
+         "image": "../images/mirai.jpg",
         "url": "https://raw.githubusercontent.com/nikhilpabolu99/data/main/movies/mirai/20250907/mirai_usa_20250907.json"
       }
     ];
@@ -1522,3 +1523,4 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
+
