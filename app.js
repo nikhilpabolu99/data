@@ -610,7 +610,7 @@ const UI = {
 
     Navigation.pushState('alphabet');
 
-    UI.clearAndShowHeader(container, "← Back", "Select Starting Letter");
+    UI.clearAndShowHeader(container, "← Back", "Movies by 1st Letter");
 
     const buttonGrid = document.createElement("div");
     buttonGrid.className = "alphabet-grid";
@@ -1532,6 +1532,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
+
 
 
 
