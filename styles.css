@@ -204,7 +204,10 @@ body {
   padding: 6px 8px !important;
   border-radius: 6px !important;
 }
-
+#jsonViewerSection #buttonGrid {
+  max-height: none;
+  overflow: visible;
+}
 
 #jsonViewerSection .data-button.moviewise-summary {
   font-size: 11px !important;
