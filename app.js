@@ -9,7 +9,7 @@ const CONFIG = {
   repo: "data",
   branch: "main",
   moviesFolder: "movies",
-  githubToken: null,
+  githubToken: "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",
   moviewiseSummaryFields: [
     "MOVIE",
     "TOTALSTATES", 
@@ -1551,6 +1551,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
+
 
 
 
