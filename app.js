@@ -697,13 +697,21 @@ const LatestReleases = {
       //movieCard.onclick = () => JsonViewer.openJsonViewer(item.url, item.movie);
       //movieCard.onclick = () => Explorer.showMovieFolder(`movies/${item.movieFolderName}`, item.movieDisplayName);
       // movieCard.onclick = () => Explorer.showMovieFolder(`movies/${item.folder}`, item.movie);
-      movieCard.onclick = async () => {
+    movieCard.onclick = async () => {
   await Explorer.showMovieFolder(`movies/${item.movieFolderName}`, item.movieDisplayName);
   const explorerContainer = document.getElementById('explorer');
   if (explorerContainer) {
-    explorerContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Get the vertical position of the container relative to the viewport plus current scroll offset
+    const topPos = explorerContainer.getBoundingClientRect().top + window.pageYOffset;
+
+    // Scroll to position with smooth behavior and slightly offset for better view
+    window.scrollTo({ 
+      top: topPos - 20, // offset 20px above container for nicer visual spacing
+      behavior: 'smooth' 
+    });
   }
 };
+
 
 
       container.appendChild(movieCard);
@@ -1539,6 +1547,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
+
 
 
 
