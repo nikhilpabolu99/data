@@ -714,6 +714,16 @@ body {
   box-shadow: var(--shadow-light);
 }
 
+button.explorer-button {
+  font-size: 13px !important;
+  padding: 5px 10px !important;
+  margin: 4px 0 !important;
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Table Styles */
 .table-container {
   overflow-x: auto;
