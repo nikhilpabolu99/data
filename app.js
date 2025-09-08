@@ -1010,27 +1010,31 @@ const JsonViewer = {
     
     buttonGrid.innerHTML = '';
 
-    Object.keys(AppState.jsonData).forEach(key => {
-      if (Array.isArray(AppState.jsonData[key])) {
-        const button = document.createElement('button');
-        const isMoviewiseSummary = key.toLowerCase().includes('moviewise') && key.toLowerCase().includes('summary');
+ const excludedKeys = new Set(['hf_unres_results', 'status_400_failures', 'finaldf']);
 
-        button.className = isMoviewiseSummary ? 'data-button moviewise-summary' : 'data-button';
+Object.keys(AppState.jsonData).forEach(key => {
+  if (excludedKeys.has(key)) return; // skip excluded keys
+  if (Array.isArray(AppState.jsonData[key])) {
+    const button = document.createElement('button');
+    const isMoviewiseSummary = key.toLowerCase().includes('moviewise') && key.toLowerCase().includes('summary');
 
-        const title = document.createElement('div');
-        title.textContent = Utils.formatDisplayText(key);
+    button.className = isMoviewiseSummary ? 'data-button moviewise-summary' : 'data-button';
 
-        const count = document.createElement('span');
-        count.className = 'record-count';
-        count.textContent = `${AppState.jsonData[key].length} records`;
+    const title = document.createElement('div');
+    title.textContent = Utils.formatDisplayText(key);
 
-        button.appendChild(title);
-        button.appendChild(count);
-        
-        button.addEventListener('click', (e) => DataTable.showData(key, e));
-        buttonGrid.appendChild(button);
-      }
-    });
+    const count = document.createElement('span');
+    count.className = 'record-count';
+    count.textContent = `${AppState.jsonData[key].length} records`;
+
+    button.appendChild(title);
+    button.appendChild(count);
+    
+    button.addEventListener('click', (e) => DataTable.showData(key, e));
+    buttonGrid.appendChild(button);
+  }
+});
+
   },
 
   resetDataDisplay: () => {
@@ -1547,6 +1551,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
+
 
 
 
