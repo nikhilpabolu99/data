@@ -514,16 +514,16 @@ body {
   box-shadow: 0 0 0 3px rgba(79,172,254,0.1);
 }
 /* Summary Display Container */
+/* Summary Display Container */
 .summary-display {
   background: var(--light-bg);
   border: 2px solid #4facfe;
   border-radius: 15px;
-  padding: 12px 15px;
+  padding: 15px 20px;
   margin-bottom: 20px;
   display: none;
-  overflow-x: auto;          /* horizontal scroll if needed */
-  white-space: nowrap;       /* prevent wrapping */
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  width: 100%; /* full container width */
+  box-sizing: border-box;
 }
 
 .summary-display.show {
@@ -533,60 +533,59 @@ body {
 /* Title */
 .summary-title {
   color: #333;
-  font-size: 1.1em;
+  font-size: 1.2em;
   font-weight: 600;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   text-align: center;
   border-bottom: 2px solid #4facfe;
-  padding-bottom: 6px;
+  padding-bottom: 8px;
 }
 
-/* Flex container for items on one line */
+/* Use CSS Grid with auto-fill for fluid, full-width columns */
 .summary-grid {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); /* fluid columns */
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* Individual summary item */
+/* Summary items stretch and fill their grid cell */
 .summary-item {
   background: white;
-  padding: 6px 10px;
+  padding: 10px 15px;
   border-radius: 8px;
-  border-left: 3px solid #4facfe;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border-left: 4px solid #4facfe;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
   transition: all 0.3s ease;
-  flex: 0 0 auto;
-  min-width: 100px;           /* smaller min width */
-  max-width: 140px;           /* tighter max width */
-  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;  /* allow shrinking */
   overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 11px;
 }
 
 .summary-item:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 3px 10px rgba(79,172,254,0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(79,172,254,0.15);
 }
 
-/* Key text smaller and tight */
+/* Text styling */
 .summary-key {
   font-weight: 600;
   color: #333;
-  font-size: 0.8em;
-  margin-bottom: 2px;
+  font-size: 0.9em;
+  margin-bottom: 4px;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.5px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Value text smaller, no wrapping */
 .summary-value {
   color: #666;
-  font-size: 0.85em;
+  font-size: 1em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
