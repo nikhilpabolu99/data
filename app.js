@@ -663,11 +663,11 @@ const LatestReleases = {
       img.src = item.image;
       img.alt = item.movie + ' Movie Poster';
       img.style.cssText = `
-        width: 200px;
-        height: 300px;
+        width: 100px;
+        height: 160px;
         border-radius: 15px;
         object-fit: cover;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
       `;
       
       const overlay = document.createElement('div');
@@ -1523,4 +1523,5 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
+
 
