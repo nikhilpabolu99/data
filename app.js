@@ -1,9 +1,5 @@
-// app.js — refactored from inline index.html script
-// Functionality kept identical to your original file.
-// - Moved CSS and JS to separate files
-// - Replaced inline onclicks with addEventListener
-// - Small reliability fix: pass click events when needed
-// - Debounced search input (250ms)
+// app.js - Movie Collections Website
+// Enhanced version with navbar functionality and improved UX
 
 /* =======================
    Configuration & State
@@ -16,7 +12,7 @@ const CONFIG = {
   githubToken: null,
   moviewiseSummaryFields: [
     "MOVIE",
-    "TOTALSTATES",
+    "TOTALSTATES", 
     "TOTALSHOWS",
     "BOOKEDSEATS",
     "TOTALGROSS",
@@ -38,39 +34,161 @@ const AppState = {
 };
 
 /* =======================
+   Navbar Functionality
+   ======================= */
+const NavbarManager = {
+  init: () => {
+    const navbarToggle = document.getElementById('navbarToggle');
+    const navbarMenu = document.getElementById('navbarMenu');
+
+    // Toggle mobile menu
+    if (navbarToggle && navbarMenu) {
+      navbarToggle.addEventListener('click', () => {
+        navbarToggle.classList.toggle('active');
+        navbarMenu.classList.toggle('active');
+      });
+    }
+
+    // Close menu when clicking on links
+    document.querySelectorAll('.navbar-link, .dropdown-item').forEach(link => {
+      link.addEventListener('click', () => {
+        navbarToggle?.classList.remove('active');
+        navbarMenu?.classList.remove('active');
+      });
+    });
+
+    // Smooth scrolling for navbar links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      });
+    });
+
+    // Close dropdown on outside click
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.dropdown')) {
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+          menu.style.opacity = '0';
+          menu.style.visibility = 'hidden';
+        });
+      }
+    });
+
+    // Navbar scroll effect
+    let lastScrollY = window.scrollY;
+    window.addEventListener('scroll', () => {
+      const navbar = document.querySelector('.navbar');
+      const currentScrollY = window.scrollY;
+      
+      if (navbar) {
+        if (currentScrollY > lastScrollY && currentScrollY > 100) {
+          navbar.style.transform = 'translateY(-100%)';
+        } else {
+          navbar.style.transform = 'translateY(0)';
+        }
+        lastScrollY = currentScrollY;
+      }
+    });
+  }
+};
+
+/* =======================
    Utility Functions
    ======================= */
 const Utils = {
   getAlphabetArray: () => ['0-9', 'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'],
+  
   matchesLetter: (char, letter) => {
     const upperChar = (char || '').toUpperCase();
     return letter === '0-9' ? /[0-9]/.test(upperChar) : upperChar === letter;
   },
+  
   formatDisplayText: (text) => String(text || '').replace(/_/g, ' ').toUpperCase(),
+  
   cleanJsonText: (text) => text.replace(/:\s*NaN/g, ': null'),
+  
   createLoadingElement: (text = 'Loading...') => {
     const loading = document.createElement('div');
     loading.innerHTML = `
-      <div style="text-align:center;padding:30px;">
-        <div class="loading-spinner" style="margin-bottom:15px;"></div>
-        <p>${text}</p>
+      <div style="text-align:center;padding:50px;">
+        <div class="loading-spinner" style="margin-bottom:20px;"></div>
+        <p style="color:#666;font-size:1.1rem;">${text}</p>
       </div>`;
     return loading;
   },
+  
   createErrorElement: (title, message) => {
     const errorDiv = document.createElement('div');
     errorDiv.innerHTML = `
-      <div class="error" style="margin:20px 0;">
+      <div class="error">
         <h3>${title}</h3>
         <p>${message}</p>
       </div>`;
     return errorDiv;
   },
+  
   formatValue: (value) => {
     if (value === null || value === undefined) return 'N/A';
     if (typeof value === 'number') return value.toLocaleString();
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
+  },
+
+  showToast: (message, type = 'info') => {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    toast.style.cssText = `
+      position: fixed;
+      top: 100px;
+      right: 20px;
+      background: ${type === 'error' ? '#ff6b6b' : type === 'success' ? '#28a745' : '#4facfe'};
+      color: white;
+      padding: 15px 25px;
+      border-radius: 10px;
+      z-index: 10000;
+      opacity: 0;
+      transform: translateX(100%);
+      transition: all 0.3s ease;
+      font-weight: 600;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateX(0)';
+    }, 100);
+    
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(100%)';
+      setTimeout(() => {
+        if (document.body.contains(toast)) {
+          document.body.removeChild(toast);
+        }
+      }, 300);
+    }, 3000);
+  },
+
+  debounce: (func, wait) => {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
   }
 };
 
@@ -81,7 +199,7 @@ const GitHubAPI = {
   getHeaders: () => {
     const headers = {
       'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'GitHub-Explorer-App'
+      'User-Agent': 'MeherNolan-Explorer-App'
     };
     if (CONFIG.githubToken) headers['Authorization'] = `token ${CONFIG.githubToken}`;
     return headers;
@@ -89,7 +207,9 @@ const GitHubAPI = {
 
   checkRateLimit: async () => {
     try {
-      const resp = await fetch('https://api.github.com/rate_limit', { headers: GitHubAPI.getHeaders() });
+      const resp = await fetch('https://api.github.com/rate_limit', { 
+        headers: GitHubAPI.getHeaders() 
+      });
       return await resp.json();
     } catch (err) {
       console.warn('Could not check rate limit:', err);
@@ -101,8 +221,11 @@ const GitHubAPI = {
     const url = `${API_BASE}/${path}?ref=${CONFIG.branch}`;
     try {
       const response = await fetch(url, { headers: GitHubAPI.getHeaders() });
+      
       if (!response.ok) {
-        if (response.status === 401) throw new Error(`Authentication failed (401). The GitHub token may be invalid.`);
+        if (response.status === 401) {
+          throw new Error(`Authentication failed (401). The GitHub token may be invalid.`);
+        }
         if (response.status === 403) {
           const rateLimit = await GitHubAPI.checkRateLimit();
           if (rateLimit && rateLimit.rate && rateLimit.rate.remaining === 0) {
@@ -111,9 +234,12 @@ const GitHubAPI = {
           }
           throw new Error(`Access forbidden (403).`);
         }
-        if (response.status === 404) throw new Error(`Repository not found (404). Check ${CONFIG.owner}/${CONFIG.repo}.`);
+        if (response.status === 404) {
+          throw new Error(`Repository not found (404). Check ${CONFIG.owner}/${CONFIG.repo}.`);
+        }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
+      
       return await response.json();
     } catch (error) {
       if (retryCount === 0 && (error.name === 'TypeError' || error.message.includes('fetch'))) {
@@ -127,10 +253,14 @@ const GitHubAPI = {
   fetchJsonFile: async (url, retryCount = 0) => {
     try {
       const response = await fetch(url, { headers: GitHubAPI.getHeaders() });
+      
       if (!response.ok) {
-        if (response.status === 403) throw new Error(`Access forbidden (403). You may have hit the rate limit.`);
+        if (response.status === 403) {
+          throw new Error(`Access forbidden (403). You may have hit the rate limit.`);
+        }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
+      
       const rawText = await response.text();
       const cleaned = Utils.cleanJsonText(rawText);
       return JSON.parse(cleaned);
@@ -180,12 +310,15 @@ const Navigation = {
     AppState.navigationStack = [];
     AppState.currentView = 'root';
     const container = document.getElementById('explorer');
-    container.innerHTML = '';
-    Explorer.loadFolders("", "explorer", true);
+    if (container) {
+      container.innerHTML = '';
+      Explorer.loadFolders("", "explorer", true);
+    }
   },
 
   reattachEventListeners: () => {
     const container = document.getElementById('explorer');
+    if (!container) return;
 
     // Back buttons
     container.querySelectorAll('.back-button').forEach(btn => {
@@ -213,18 +346,33 @@ const Explorer = {
     AppState.currentView = 'root';
 
     const container = document.getElementById('explorer');
-    container.innerHTML = '<div style="text-align:center;padding:20px;">🔍 Testing repository access...</div>';
+    if (!container) return;
 
-    const accessTest = await GitHubAPI.testAccess();
-    if (!accessTest.success) {
-      container.innerHTML = '';
-      const error = Utils.createErrorElement("❌ Repository Access Error", accessTest.error);
-      container.appendChild(error);
-      return;
-    }
-
+    const loading = Utils.createLoadingElement('Testing repository access...');
     container.innerHTML = '';
-    Explorer.loadFolders("", "explorer", true);
+    container.appendChild(loading);
+
+    try {
+      const accessTest = await GitHubAPI.testAccess();
+      container.removeChild(loading);
+      
+      if (!accessTest.success) {
+        const error = Utils.createErrorElement("Repository Access Error", accessTest.error);
+        container.appendChild(error);
+        Utils.showToast('Failed to access repository', 'error');
+        return;
+      }
+
+      Utils.showToast('Repository connected successfully', 'success');
+      Explorer.loadFolders("", "explorer", true);
+    } catch (err) {
+      if (container.contains(loading)) {
+        container.removeChild(loading);
+      }
+      const error = Utils.createErrorElement("Initialization Error", err.message);
+      container.appendChild(error);
+      Utils.showToast('Failed to initialize explorer', 'error');
+    }
   },
 
   loadFolders: async (path = "", containerId = "explorer", isRoot = false) => {
@@ -279,6 +427,7 @@ const Explorer = {
       console.error("Error loading folders:", err);
       const error = Utils.createErrorElement("Error Loading Repository", err.message);
       container.appendChild(error);
+      Utils.showToast('Error loading data', 'error');
     }
   },
 
@@ -297,6 +446,8 @@ const Explorer = {
 
   showMoviesByLetter: async (letter) => {
     const container = document.getElementById('explorer');
+    if (!container) return;
+
     Navigation.pushState(`letter-${letter}`);
 
     UI.clearAndShowHeader(container, `← Back to Letters`, `Movies starting with "${letter}"`);
@@ -305,7 +456,9 @@ const Explorer = {
 
     try {
       const data = await GitHubAPI.fetchFolderContents(CONFIG.moviesFolder);
-      container.removeChild(loading);
+      if (container.contains(loading)) {
+        container.removeChild(loading);
+      }
 
       const filteredFolders = data.filter(item => {
         if (item.type !== "dir") return false;
@@ -323,14 +476,19 @@ const Explorer = {
       }
     } catch (err) {
       console.error("Error loading movies by letter:", err);
-      container.removeChild(loading);
+      if (container.contains(loading)) {
+        container.removeChild(loading);
+      }
       const error = Utils.createErrorElement("Error Loading Movies", err.message);
       container.appendChild(error);
+      Utils.showToast('Failed to load movies', 'error');
     }
   },
 
   showMovieFolder: async (path, folderName) => {
     const container = document.getElementById('explorer');
+    if (!container) return;
+
     Navigation.pushState(`movie-${path}`);
 
     UI.clearAndShowHeader(container, `← Back to Movies`, folderName);
@@ -340,7 +498,9 @@ const Explorer = {
 
     try {
       const data = await GitHubAPI.fetchFolderContents(path);
-      container.removeChild(loading);
+      if (container.contains(loading)) {
+        container.removeChild(loading);
+      }
 
       if (data.length === 0) {
         UI.showNoData(container, "This folder is empty");
@@ -360,7 +520,9 @@ const Explorer = {
       });
     } catch (err) {
       console.error("Error loading movie folder:", err);
-      container.removeChild(loading);
+      if (container.contains(loading)) {
+        container.removeChild(loading);
+      }
       const error = Utils.createErrorElement("Error Loading Folder", err.message);
       container.appendChild(error);
     }
@@ -368,6 +530,8 @@ const Explorer = {
 
   showSubFolder: async (path, folderName) => {
     const container = document.getElementById('explorer');
+    if (!container) return;
+
     Navigation.pushState(`folder-${path}`);
 
     UI.clearAndShowHeader(container, `← Back`, folderName);
@@ -377,7 +541,9 @@ const Explorer = {
 
     try {
       const data = await GitHubAPI.fetchFolderContents(path);
-      container.removeChild(loading);
+      if (container.contains(loading)) {
+        container.removeChild(loading);
+      }
 
       if (data.length === 0) {
         UI.showNoData(container, "This folder is empty");
@@ -391,7 +557,6 @@ const Explorer = {
           container.appendChild(btn);
         } else if (item.type === "file" && item.name.endsWith(".json")) {
           const btn = UI.createButton("📄 " + item.name, "explorer-button file-button");
-          console.log(item)
           btn.onclick = () => JsonViewer.openJsonViewer(item.download_url, item.name);
           container.appendChild(btn);
         }
@@ -399,7 +564,9 @@ const Explorer = {
 
     } catch (err) {
       console.error("Error loading folder:", err);
-      container.removeChild(loading);
+      if (container.contains(loading)) {
+        container.removeChild(loading);
+      }
       const error = Utils.createErrorElement("Error Loading Folder", err.message);
       container.appendChild(error);
     }
@@ -421,6 +588,7 @@ const UI = {
       const titleDiv = document.createElement("div");
       titleDiv.className = "section-title";
       titleDiv.textContent = title;
+      titleDiv.style.marginTop = "20px";
       container.appendChild(titleDiv);
     }
   },
@@ -434,13 +602,15 @@ const UI = {
 
   showNoData: (container, message) => {
     const noData = document.createElement("div");
-    noData.style.cssText = `text-align:center;padding:30px;color:#666;font-style:italic;`;
+    noData.className = "no-data";
     noData.textContent = message;
     container.appendChild(noData);
   },
 
   showAlphabetNavigation: () => {
     const container = document.getElementById('explorer');
+    if (!container) return;
+
     Navigation.pushState('alphabet');
 
     UI.clearAndShowHeader(container, "← Back", "Select Starting Letter");
@@ -460,12 +630,87 @@ const UI = {
 };
 
 /* =======================
+   Latest Releases
+   ======================= */
+const LatestReleases = {
+  load: () => {
+    const data = [
+      {
+        "movie": "OG (USA)",
+        "image": "https://via.placeholder.com/200x300/4facfe/white?text=OG",
+        "url": "https://raw.githubusercontent.com/nikhilpabolu99/data/main/movies/og/usa/20250907/og_usa_20250907.json"
+      },
+      {
+        "movie": "Mirai (USA)", 
+        "image": "https://via.placeholder.com/200x300/ff6b6b/white?text=MIRAI",
+        "url": "https://raw.githubusercontent.com/nikhilpabolu99/data/main/movies/mirai/20250907/mirai_usa_20250907.json"
+      },
+      {
+        "movie": "Pushpa 2 (Global)",
+        "image": "https://via.placeholder.com/200x300/28a745/white?text=PUSHPA+2",
+        "url": "https://raw.githubusercontent.com/nikhilpabolu99/data/main/movies/pushpa2/global/pushpa2_global_20250907.json"
+      }
+    ];
+
+    const container = document.getElementById('latestReleases');
+    if (!container) return;
+
+    container.innerHTML = '';
+    
+    data.forEach(item => {
+      const movieCard = document.createElement('div');
+      movieCard.style.cssText = `
+        position: relative;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      `;
+      
+      const img = document.createElement('img');
+      img.src = item.image;
+      img.alt = item.movie + ' Movie Poster';
+      img.style.cssText = `
+        width: 200px;
+        height: 300px;
+        border-radius: 15px;
+        object-fit: cover;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+      `;
+      
+      const overlay = document.createElement('div');
+      overlay.style.cssText = `
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(transparent, rgba(0,0,0,0.8));
+        color: white;
+        padding: 20px 15px 15px;
+        border-radius: 0 0 15px 15px;
+        font-weight: 600;
+        text-align: center;
+      `;
+      overlay.textContent = item.movie;
+      
+      movieCard.appendChild(img);
+      movieCard.appendChild(overlay);
+      
+      movieCard.onclick = () => JsonViewer.openJsonViewer(item.url, item.movie);
+      
+      container.appendChild(movieCard);
+    });
+  }
+};
+
+/* =======================
    Summary Display
    ======================= */
 const SummaryDisplay = {
   createSummary: (jsonData) => {
     const summaryDisplay = document.getElementById('summaryDisplay');
     const summaryGrid = document.getElementById('summaryGrid');
+    
+    if (!summaryDisplay || !summaryGrid) return;
+    
     summaryGrid.innerHTML = '';
 
     const moviewiseSummaryKey = SummaryDisplay.findMoviewiseSummaryKey(jsonData);
@@ -486,7 +731,9 @@ const SummaryDisplay = {
   },
 
   displayMoviewiseSummaryData: (summaryData, container) => {
-    document.querySelector('.summary-title').textContent = '📊 Moviewise Summary Data';
+    const titleElement = document.querySelector('.summary-title');
+    if (titleElement) titleElement.textContent = 'Moviewise Summary Data';
+    
     if (summaryData.length > 0) {
       const firstRecord = summaryData[0];
       if (summaryData.length === 1 && typeof firstRecord === 'object') {
@@ -589,20 +836,12 @@ const SummaryDisplay = {
         container.appendChild(summaryItem);
       }
     });
-
-    if (keysToShow.length === 0 && CONFIG.moviewiseSummaryFields) {
-      const noDataItem = document.createElement('div');
-      noDataItem.className = 'summary-item';
-      noDataItem.innerHTML = `
-        <div class="summary-key">Notice</div>
-        <div class="summary-value">No matching fields found. Check CONFIG.moviewiseSummaryFields configuration.</div>
-      `;
-      container.appendChild(noDataItem);
-    }
   },
 
   displayGeneralSummary: (jsonData, container) => {
-    document.querySelector('.summary-title').textContent = '📊 Data Summary';
+    const titleElement = document.querySelector('.summary-title');
+    if (titleElement) titleElement.textContent = 'Data Summary';
+    
     const summaryItems = [];
 
     Object.keys(jsonData).forEach(key => {
@@ -630,7 +869,8 @@ const SummaryDisplay = {
   },
 
   hide: () => {
-    document.getElementById('summaryDisplay').classList.remove('show');
+    const summaryDisplay = document.getElementById('summaryDisplay');
+    if (summaryDisplay) summaryDisplay.classList.remove('show');
   }
 };
 
@@ -639,91 +879,117 @@ const SummaryDisplay = {
    ======================= */
 const JsonViewer = {
   showExplorer: () => {
-    document.getElementById('explorerSection').classList.remove('hidden');
-    document.getElementById('jsonViewerSection').classList.remove('show');
+    document.getElementById('explorerSection')?.classList.remove('hidden');
+    document.getElementById('jsonViewerSection')?.classList.remove('show');
     JsonViewer.reset();
   },
 
   show: () => {
-    document.getElementById('explorerSection').classList.add('hidden');
-    document.getElementById('jsonViewerSection').classList.add('show');
+    document.getElementById('explorerSection')?.classList.add('hidden');
+    document.getElementById('jsonViewerSection')?.classList.add('show');
   },
 
   reset: () => {
-    document.getElementById('loadingSection').style.display = 'none';
-    document.getElementById('errorSection').style.display = 'none';
-    document.getElementById('buttonsContainer').classList.remove('show');
-    document.getElementById('dataDisplay').classList.remove('show');
-    document.getElementById('filterSection').classList.remove('show');
-    document.getElementById('noData').style.display = 'block';
-    document.getElementById('dataTable').style.display = 'none';
+    const elements = {
+      loadingSection: document.getElementById('loadingSection'),
+      errorSection: document.getElementById('errorSection'),
+      buttonsContainer: document.getElementById('buttonsContainer'),
+      dataDisplay: document.getElementById('dataDisplay'),
+      filterSection: document.getElementById('filterSection'),
+      noData: document.getElementById('noData'),
+      dataTable: document.getElementById('dataTable')
+    };
+
+    if (elements.loadingSection) elements.loadingSection.style.display = 'none';
+    if (elements.errorSection) elements.errorSection.style.display = 'none';
+    if (elements.buttonsContainer) elements.buttonsContainer.classList.remove('show');
+    if (elements.dataDisplay) elements.dataDisplay.classList.remove('show');
+    if (elements.filterSection) elements.filterSection.classList.remove('show');
+    if (elements.noData) elements.noData.style.display = 'block';
+    if (elements.dataTable) elements.dataTable.style.display = 'none';
+    
     SummaryDisplay.hide();
   },
 
   openJsonViewer: async (url, filename) => {
     JsonViewer.show();
-    console.log(url, filename);
-    const loadingSection = document.getElementById('loadingSection');
-    const errorSection = document.getElementById('errorSection');
-    const buttonsContainer = document.getElementById('buttonsContainer');
-    const dataDisplay = document.getElementById('dataDisplay');
+    
+    const elements = {
+      loadingSection: document.getElementById('loadingSection'),
+      errorSection: document.getElementById('errorSection'),
+      buttonsContainer: document.getElementById('buttonsContainer'),
+      dataDisplay: document.getElementById('dataDisplay')
+    };
 
-    loadingSection.style.display = 'block';
-    errorSection.style.display = 'none';
-    buttonsContainer.classList.remove('show');
-    dataDisplay.classList.remove('show');
+    if (elements.loadingSection) elements.loadingSection.style.display = 'block';
+    if (elements.errorSection) elements.errorSection.style.display = 'none';
+    if (elements.buttonsContainer) elements.buttonsContainer.classList.remove('show');
+    if (elements.dataDisplay) elements.dataDisplay.classList.remove('show');
+    
     SummaryDisplay.hide();
 
     try {
       AppState.jsonData = await GitHubAPI.fetchJsonFile(url);
-      if (!AppState.jsonData || typeof AppState.jsonData !== 'object') throw new Error('Invalid JSON data structure');
+      
+      if (!AppState.jsonData || typeof AppState.jsonData !== 'object') {
+        throw new Error('Invalid JSON data structure');
+      }
 
       const hasArrayData = Object.values(AppState.jsonData).some(v => Array.isArray(v));
-      if (!hasArrayData) throw new Error('No array data found in JSON file');
+      if (!hasArrayData) {
+        throw new Error('No array data found in JSON file');
+      }
 
-      loadingSection.style.display = 'none';
-      buttonsContainer.classList.add('show');
-      dataDisplay.classList.add('show');
-
-      document.querySelector('.header p').textContent = `Viewing: ${filename}`;
+      if (elements.loadingSection) elements.loadingSection.style.display = 'none';
+      if (elements.buttonsContainer) elements.buttonsContainer.classList.add('show');
+      if (elements.dataDisplay) elements.dataDisplay.classList.add('show');
 
       SummaryDisplay.createSummary(AppState.jsonData);
       JsonViewer.createDataButtons();
       JsonViewer.resetDataDisplay();
+      
+      Utils.showToast('Data loaded successfully', 'success');
 
     } catch (error) {
       console.error('Error loading JSON:', error);
       JsonViewer.showError(error);
+      Utils.showToast('Failed to load data', 'error');
     }
   },
 
   showError: (error) => {
-    const loadingSection = document.getElementById('loadingSection');
-    const errorSection = document.getElementById('errorSection');
+    const elements = {
+      loadingSection: document.getElementById('loadingSection'),
+      errorSection: document.getElementById('errorSection')
+    };
 
-    loadingSection.style.display = 'none';
+    if (elements.loadingSection) elements.loadingSection.style.display = 'none';
 
     let errorMessage = '';
     if (error.name === 'SyntaxError') {
       errorMessage = `
         <div class="error">
-          <h3>📄 Invalid JSON Format</h3>
+          <h3>Invalid JSON Format</h3>
           <p>The JSON file contains invalid syntax.</p>
         </div>`;
     } else {
       errorMessage = `
         <div class="error">
-          <h3>❌ Error Loading Data</h3>
+          <h3>Error Loading Data</h3>
           <p>${error.message}</p>
         </div>`;
     }
 
-    errorSection.innerHTML = errorMessage;
-    errorSection.style.display = 'block';
+    if (elements.errorSection) {
+      elements.errorSection.innerHTML = errorMessage;
+      elements.errorSection.style.display = 'block';
+    }
   },
 
   createDataButtons: () => {
     const buttonGrid = document.getElementById('buttonGrid');
+    if (!buttonGrid) return;
+    
     buttonGrid.innerHTML = '';
 
     Object.keys(AppState.jsonData).forEach(key => {
@@ -742,7 +1008,7 @@ const JsonViewer = {
 
         button.appendChild(title);
         button.appendChild(count);
-        // pass event so DataTable.showData can mark the clicked button active reliably
+        
         button.addEventListener('click', (e) => DataTable.showData(key, e));
         buttonGrid.appendChild(button);
       }
@@ -750,9 +1016,15 @@ const JsonViewer = {
   },
 
   resetDataDisplay: () => {
-    document.getElementById('filterSection').classList.remove('show');
-    document.getElementById('noData').style.display = 'block';
-    document.getElementById('dataTable').style.display = 'none';
+    const elements = {
+      filterSection: document.getElementById('filterSection'),
+      noData: document.getElementById('noData'),
+      dataTable: document.getElementById('dataTable')
+    };
+
+    if (elements.filterSection) elements.filterSection.classList.remove('show');
+    if (elements.noData) elements.noData.style.display = 'block';
+    if (elements.dataTable) elements.dataTable.style.display = 'none';
   }
 };
 
@@ -761,7 +1033,7 @@ const JsonViewer = {
    ======================= */
 const DataTable = {
   showData: (key, clickEvent) => {
-    // Update active button - reliable via clickEvent
+    // Update active button
     document.querySelectorAll('.data-button').forEach(btn => btn.classList.remove('active'));
     if (clickEvent && clickEvent.target) {
       const btn = clickEvent.target.closest('.data-button');
@@ -780,40 +1052,62 @@ const DataTable = {
     AppState.filteredData = [...data];
     AppState.currentSort = { column: null, direction: 'asc' };
 
-    document.getElementById('dataTitle').textContent = Utils.formatDisplayText(key);
-    document.getElementById('dataCount').textContent = `${data.length} records`;
-    document.getElementById('downloadTableBtn').style.display = 'block';
-    document.getElementById('filterSection').classList.add('show');
+    const elements = {
+      dataTitle: document.getElementById('dataTitle'),
+      dataCount: document.getElementById('dataCount'),
+      downloadBtn: document.getElementById('downloadTableBtn'),
+      filterSection: document.getElementById('filterSection'),
+      noData: document.getElementById('noData'),
+      dataTable: document.getElementById('dataTable')
+    };
+
+    if (elements.dataTitle) elements.dataTitle.textContent = Utils.formatDisplayText(key);
+    if (elements.dataCount) elements.dataCount.textContent = `${data.length} records`;
+    if (elements.downloadBtn) elements.downloadBtn.style.display = 'block';
+    if (elements.filterSection) elements.filterSection.classList.add('show');
 
     DataTable.setupColumnFilter(data);
 
-    document.getElementById('noData').style.display = 'none';
-    document.getElementById('dataTable').style.display = 'table';
+    if (elements.noData) elements.noData.style.display = 'none';
+    if (elements.dataTable) elements.dataTable.style.display = 'table';
 
     DataTable.createTable(AppState.filteredData);
   },
 
   showNoData: (key) => {
-    document.getElementById('dataTitle').textContent = Utils.formatDisplayText(key);
-    document.getElementById('dataCount').textContent = '0 records';
-    document.getElementById('filterSection').classList.remove('show');
-    document.getElementById('downloadTableBtn').style.display = 'none';
+    const elements = {
+      dataTitle: document.getElementById('dataTitle'),
+      dataCount: document.getElementById('dataCount'),
+      filterSection: document.getElementById('filterSection'),
+      downloadBtn: document.getElementById('downloadTableBtn'),
+      noData: document.getElementById('noData'),
+      dataTable: document.getElementById('dataTable')
+    };
 
-    const noData = document.getElementById('noData');
-    noData.style.display = 'block';
-    noData.textContent = 'No data available for this table';
+    if (elements.dataTitle) elements.dataTitle.textContent = Utils.formatDisplayText(key);
+    if (elements.dataCount) elements.dataCount.textContent = '0 records';
+    if (elements.filterSection) elements.filterSection.classList.remove('show');
+    if (elements.downloadBtn) elements.downloadBtn.style.display = 'none';
 
-    document.getElementById('dataTable').style.display = 'none';
+    if (elements.noData) {
+      elements.noData.style.display = 'block';
+      elements.noData.textContent = 'No data available for this table';
+    }
+
+    if (elements.dataTable) elements.dataTable.style.display = 'none';
   },
 
   createTable: (data) => {
     const tableHead = document.getElementById('tableHead');
     const tableBody = document.getElementById('tableBody');
+    
+    if (!tableHead || !tableBody) return;
+    
     tableHead.innerHTML = '';
     tableBody.innerHTML = '';
 
     if (data.length === 0) {
-      tableBody.innerHTML = '<tr><td colspan="100%" style="text-align:center;padding:30px;color:#666;">No records match your filters</td></tr>';
+      tableBody.innerHTML = '<tr><td colspan="100%" class="no-data">No records match your filters</td></tr>';
       return;
     }
 
@@ -859,6 +1153,8 @@ const DataTable = {
 
   setupColumnFilter: (data) => {
     const columnFilter = document.getElementById('columnFilter');
+    if (!columnFilter) return;
+    
     columnFilter.innerHTML = '<option value="">All Columns</option>';
     if (data.length === 0) return;
 
@@ -952,10 +1248,16 @@ const DataTable = {
       keys.forEach(key => {
         const td = document.createElement('td');
         let value = item[key];
-        if (value === null || value === undefined) { td.textContent = '-'; td.style.color = '#999'; }
-        else if (typeof value === 'number') td.textContent = value.toLocaleString();
-        else if (typeof value === 'object') td.textContent = JSON.stringify(value);
-        else td.textContent = String(value);
+        if (value === null || value === undefined) { 
+          td.textContent = '-'; 
+          td.style.color = '#999'; 
+        } else if (typeof value === 'number') {
+          td.textContent = value.toLocaleString();
+        } else if (typeof value === 'object') {
+          td.textContent = JSON.stringify(value);
+        } else {
+          td.textContent = String(value);
+        }
 
         td.style.cssText = `padding:8px 10px;border:1px solid #ddd;white-space:nowrap;font-size:11px;position:relative;`;
         row.appendChild(td);
@@ -968,22 +1270,27 @@ const DataTable = {
 };
 
 /* =======================
-   Filters (debounced)
+   Filters
    ======================= */
 const Filters = {
   apply: () => {
-    const searchInput = document.getElementById('searchInput').value.toLowerCase();
-    const columnFilter = document.getElementById('columnFilter').value;
+    const searchInput = document.getElementById('searchInput');
+    const columnFilter = document.getElementById('columnFilter');
+    
+    if (!searchInput || !columnFilter) return;
+    
+    const searchValue = searchInput.value.toLowerCase();
+    const columnValue = columnFilter.value;
 
     AppState.filteredData = AppState.originalData.filter(item => {
       let matchesSearch = true;
-      if (searchInput) {
-        if (columnFilter) {
-          const value = item[columnFilter];
-          matchesSearch = value != null && String(value).toLowerCase().includes(searchInput);
+      if (searchValue) {
+        if (columnValue) {
+          const value = item[columnValue];
+          matchesSearch = value != null && String(value).toLowerCase().includes(searchValue);
         } else {
           matchesSearch = Object.values(item).some(value =>
-            value != null && String(value).toLowerCase().includes(searchInput)
+            value != null && String(value).toLowerCase().includes(searchValue)
           );
         }
       }
@@ -996,43 +1303,55 @@ const Filters = {
       DataTable.createTable(AppState.filteredData);
     }
 
-    document.getElementById('dataCount').textContent = `${AppState.filteredData.length} records`;
+    const dataCount = document.getElementById('dataCount');
+    if (dataCount) dataCount.textContent = `${AppState.filteredData.length} records`;
   },
 
   clear: () => {
-    document.getElementById('searchInput').value = '';
-    document.getElementById('columnFilter').value = '';
+    const searchInput = document.getElementById('searchInput');
+    const columnFilter = document.getElementById('columnFilter');
+    const dataCount = document.getElementById('dataCount');
+    
+    if (searchInput) searchInput.value = '';
+    if (columnFilter) columnFilter.value = '';
+    
     AppState.currentSort = { column: null, direction: 'asc' };
     AppState.filteredData = [...AppState.originalData];
     DataTable.createTable(AppState.filteredData);
-    document.getElementById('dataCount').textContent = `${AppState.filteredData.length} records`;
+    
+    if (dataCount) dataCount.textContent = `${AppState.filteredData.length} records`;
   }
 };
 
 /* =======================
-   Global Functions & Handlers
+   Download Functionality
    ======================= */
-function showExplorer() { JsonViewer.showExplorer(); }
-function applyFilters() { Filters.apply(); }
-function clearFilters() { Filters.clear(); }
-
 async function downloadTableAsImage() {
   const downloadBtn = document.getElementById('downloadTableBtn');
+  if (!downloadBtn) return;
+  
   downloadBtn.disabled = true;
-  downloadBtn.innerHTML = '⏳ Generating...';
+  downloadBtn.innerHTML = 'Generating...';
 
   try {
     const dataToCapture = AppState.originalData;
-    if (!dataToCapture || dataToCapture.length === 0) throw new Error('No data available to download');
+    if (!dataToCapture || dataToCapture.length === 0) {
+      throw new Error('No data available to download');
+    }
 
     const fullTable = DataTable.createFullTable(dataToCapture);
-    if (!fullTable) throw new Error('Failed to create table for capture');
+    if (!fullTable) {
+      throw new Error('Failed to create table for capture');
+    }
 
     const captureContainer = document.createElement('div');
     captureContainer.style.cssText = `position:absolute;left:-9999px;top:0;background:white;padding:20px;z-index:-1;`;
+    
     const title = document.createElement('h2');
-    title.textContent = document.getElementById('dataTitle').textContent;
+    const dataTitle = document.getElementById('dataTitle');
+    title.textContent = dataTitle ? dataTitle.textContent : 'Data Export';
     title.style.cssText = `margin:0 0 20px 0;color:#333;font-family:'Segoe UI',Tahoma,Verdana,sans-serif;text-align:center;`;
+    
     captureContainer.appendChild(title);
     captureContainer.appendChild(fullTable);
     document.body.appendChild(captureContainer);
@@ -1058,49 +1377,71 @@ async function downloadTableAsImage() {
     link.click();
     document.body.removeChild(link);
 
-    downloadBtn.innerHTML = '✅ Downloaded!';
-    setTimeout(() => { downloadBtn.innerHTML = '📥 Download Table'; downloadBtn.disabled = false; }, 2000);
+    downloadBtn.innerHTML = 'Downloaded!';
+    Utils.showToast('Table downloaded successfully', 'success');
+    
+    setTimeout(() => { 
+      downloadBtn.innerHTML = 'Download Table'; 
+      downloadBtn.disabled = false; 
+    }, 2000);
 
   } catch (error) {
     console.error('Error downloading table:', error);
-    downloadBtn.innerHTML = '❌ Error';
-    setTimeout(() => { downloadBtn.innerHTML = '📥 Download Table'; downloadBtn.disabled = false; }, 2000);
-    alert('Error downloading table: ' + error.message);
+    downloadBtn.innerHTML = 'Error';
+    Utils.showToast('Failed to download table', 'error');
+    
+    setTimeout(() => { 
+      downloadBtn.innerHTML = 'Download Table'; 
+      downloadBtn.disabled = false; 
+    }, 2000);
   }
 }
 
 /* =======================
-   Event bindings (no inline handlers)
+   Event Listeners & Initialization
    ======================= */
 document.addEventListener('DOMContentLoaded', () => {
-  // Initial explorer load
+  // Initialize navbar
+  NavbarManager.init();
+  
+  // Initialize explorer
   Explorer.initialize();
+  
+  // Load latest releases
+  LatestReleases.load();
 
   // Back button
   const backButton = document.getElementById('backButton');
-  if (backButton) backButton.addEventListener('click', showExplorer);
+  if (backButton) {
+    backButton.addEventListener('click', () => JsonViewer.showExplorer());
+  }
 
   // Download button
   const downloadBtn = document.getElementById('downloadTableBtn');
-  if (downloadBtn) downloadBtn.addEventListener('click', downloadTableAsImage);
+  if (downloadBtn) {
+    downloadBtn.addEventListener('click', downloadTableAsImage);
+  }
 
   // Clear filters button
   const clearBtn = document.getElementById('clearFiltersBtn');
-  if (clearBtn) clearBtn.addEventListener('click', clearFilters);
+  if (clearBtn) {
+    clearBtn.addEventListener('click', Filters.clear);
+  }
 
   // Column filter
   const columnFilter = document.getElementById('columnFilter');
-  if (columnFilter) columnFilter.addEventListener('change', () => {
-    // apply Filters with current debounce wrapper
-    debounceApplyFilters();
-  });
+  if (columnFilter) {
+    columnFilter.addEventListener('change', () => {
+      debounceApplyFilters();
+    });
+  }
 
   // Debounce wrapper around applyFilters
   let debounceTimer = null;
   window.debounceApplyFilters = () => {
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
-      applyFilters();
+      Filters.apply();
       debounceTimer = null;
     }, 250);
   };
@@ -1112,36 +1453,109 @@ document.addEventListener('DOMContentLoaded', () => {
       debounceApplyFilters();
     });
   }
+
+  // Handle window resize for responsive design
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      // Recalculate table dimensions if needed
+      const tableContainer = document.getElementById('tableContainer');
+      if (tableContainer && tableContainer.style.display !== 'none') {
+        // Force redraw
+        tableContainer.style.display = 'none';
+        setTimeout(() => {
+          tableContainer.style.display = 'block';
+        }, 10);
+      }
+    }, 250);
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    // Escape key to go back
+    if (e.key === 'Escape') {
+      if (AppState.currentView !== 'root') {
+        Navigation.goBack();
+      } else if (document.getElementById('jsonViewerSection')?.classList.contains('show')) {
+        JsonViewer.showExplorer();
+      }
+    }
+    
+    // Ctrl/Cmd + F to focus search
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f' && document.getElementById('searchInput')) {
+      e.preventDefault();
+      document.getElementById('searchInput').focus();
+    }
+  });
+
+  // Enhanced error handling
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled promise rejection:', event.reason);
+    Utils.showToast('An unexpected error occurred', 'error');
+  });
+
+  window.addEventListener('error', (event) => {
+    console.error('Global error:', event.error);
+    Utils.showToast('An unexpected error occurred', 'error');
+  });
 });
 
-function latestReleases(){
-    // fetch('./Latest/latest_releases.json')
-    //   .then(response => response.json())
-    //   .then(data => {
-        data = [
-    {
-    
-    "movie": "og_usa_20250907.json",
-    "image": "../images/og.jpg",
-    "url" : "https://raw.githubusercontent.com/nikhilpabolu99/data/main/movies/og/usa/20250907/og_usa_20250907.json"
-},
- {
-    "movie": "mirai_usa_20250907.json",
-    "image": "../images/mirai.jpg",
-    "url" : "https://raw.githubusercontent.com/nikhilpabolu99/data/main/movies/mirai/20250907/mirai_usa_20250907.json"
-}
-]
-        const container = document.getElementById('latestReleases');
-        data.forEach(item => {
-          const img = document.createElement('img');
-          img.src = 'Latest/' + item.image.replace('../', '');
-          img.alt = item.movie + ' Movie Poster';
-          img.width = 200;
-          img.style.cursor = 'pointer';
-          img.onclick = () => JsonViewer.openJsonViewer(item.url, item.movie)
-          container.appendChild(img);
-        });
-    //   });
+/* =======================
+   Global Functions (for backward compatibility)
+   ======================= */
+function showExplorer() { 
+  JsonViewer.showExplorer(); 
 }
 
-latestReleases();
+function applyFilters() { 
+  Filters.apply(); 
+}
+
+function clearFilters() { 
+  Filters.clear(); 
+}
+
+/* =======================
+   Additional Utility Functions
+   ======================= */
+const Analytics = {
+  trackPageView: (page) => {
+    // Placeholder for analytics tracking
+    console.log(`Page view: ${page}`);
+  },
+  
+  trackEvent: (category, action, label) => {
+    // Placeholder for event tracking
+    console.log(`Event: ${category} - ${action} - ${label}`);
+  }
+};
+
+const Performance = {
+  measureTime: (name, fn) => {
+    const start = performance.now();
+    const result = fn();
+    const end = performance.now();
+    console.log(`${name} took ${end - start} milliseconds`);
+    return result;
+  }
+};
+
+// Export for potential module usage
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    CONFIG,
+    AppState,
+    Utils,
+    GitHubAPI,
+    Navigation,
+    Explorer,
+    UI,
+    JsonViewer,
+    DataTable,
+    Filters,
+    SummaryDisplay,
+    LatestReleases,
+    NavbarManager
+  };
+}
