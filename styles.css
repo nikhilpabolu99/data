@@ -212,22 +212,86 @@ body {
 }
 
 
+/* Container for buttons */
+#jsonViewerSection #buttonGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Responsive, fluid columns */
+  gap: 8px;              /* Minimal gap between buttons */
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* Buttons */
 #jsonViewerSection .data-button {
-  flex: 1 1 auto;      /* allow shrinking and growing */
-  min-width: 80px;     /* adjust as needed for button readable size */
-  max-width: 120px;    /* restrict max width for more per line */
-  margin: 2px 3px;     /* small margins */
+  width: 100%;             /* Fill the grid cell */
+  padding: 10px 12px;      /* Adequate padding */
+  border-radius: 6px;
+  border: none;
+  background-color: var(--primary-gradient);
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  box-sizing: border-box;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  max-width: 320px;        /* Limit max width */
+  min-width: 150px;        /* Minimum width for readability */
+}
+
+#jsonViewerSection .data-button:hover {
+  background-color: #4facfe;
+  box-shadow: var(--shadow-medium);
+}
+
+/* Active button style */
+#jsonViewerSection .data-button.active {
+  background: var(--secondary-gradient);
+}
+
+/* Table header styles */
+#dataTable th {
+  font-size: 12px !important;      /* Smaller font */
+  white-space: nowrap;              /* Prevent wrapping */
+  text-overflow: ellipsis;          /* Show ellipsis for overflow */
+  overflow: hidden;
+  max-width: 150px;                 /* Optional max width */
+  padding: 8px 12px !important;    /* Reduced padding for compactness */
+  text-align: left;
+  cursor: pointer;                  /* Indicate sortable */
+}
+
+/* Table data cells for consistent sizing */
+#dataTable td {
+  font-size: 11px;
+  padding: 8px 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 12px !important;
-  padding: 6px 8px !important;
-  border-radius: 6px !important;
+  max-width: 150px;
 }
-#jsonViewerSection #buttonGrid {
-  max-height: none;
-  overflow: visible;
+
+/* Optional: limit table width so horizontal scroll works on smaller screens */
+.table-container {
+  max-width: 100%;
+  overflow-x: auto;
 }
+
+/* Reduce padding in data count and title for better spacing */
+.data-title {
+  font-size: 1.5rem;
+}
+
+.data-count {
+  font-size: 0.9rem;
+  padding: 8px 16px;
+}
+
 
 #jsonViewerSection .data-button.moviewise-summary {
   font-size: 11px !important;
