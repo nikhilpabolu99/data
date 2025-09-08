@@ -661,6 +661,8 @@ const LatestReleases = {
         position: relative;
         cursor: pointer;
         transition: all 0.3s ease;
+        width: 140px;            
+  margin: 8px;
       `;
       
       const img = document.createElement('img');
@@ -1530,6 +1532,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
+
 
 
 
