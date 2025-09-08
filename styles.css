@@ -183,70 +183,52 @@ body {
   backdrop-filter: blur(10px);
 }
 
+/* Available Data Tables Buttons Container and Buttons */
 #jsonViewerSection #buttonGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* auto-fit for flexible columns */
-  gap: 8px;              /* minimal gap between buttons */
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
   width: 100%;
   padding: 0;
   margin: 0;
   box-sizing: border-box;
 }
 
-.data-button {
-  width: 100%;           /* fill the grid cell width */
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid #4facfe;
-  background-color: white;
-  cursor: pointer;
-  font-weight: 600;
-  box-sizing: border-box;
-  text-align: center;
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-.data-button:hover {
-  background-color: #e6f3ff;
-  box-shadow: 0 3px 8px rgba(79,172,254,0.15);
-}
-
-
-/* Container for buttons */
-#jsonViewerSection #buttonGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Responsive, fluid columns */
-  gap: 8px;              /* Minimal gap between buttons */
-  width: 100%;
-  padding: 0;
-  margin: 0;
-  box-sizing: border-box;
-}
-
-/* Buttons */
 #jsonViewerSection .data-button {
-  width: 100%;             /* Fill the grid cell */
-  padding: 10px 12px;      /* Adequate padding */
-  border-radius: 6px;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 10px;
   border: none;
-  background-color: var(--primary-gradient);
+  background: var(--primary-gradient);
   color: white;
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
-  box-sizing: border-box;
   text-align: center;
-  text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+  min-width: 150px;
+  box-shadow: var(--shadow-light);
   transition: background-color 0.3s ease, box-shadow 0.3s ease;
-  max-width: 320px;        /* Limit max width */
-  min-width: 150px;        /* Minimum width for readability */
 }
 
 #jsonViewerSection .data-button:hover {
-  background-color: #4facfe;
+  background: var(--secondary-gradient);
   box-shadow: var(--shadow-medium);
+}
+
+#jsonViewerSection .data-button.active {
+  background: var(--secondary-gradient);
+}
+
+#jsonViewerSection .data-button.moviewise-summary {
+  background: var(--danger-gradient);
+  font-weight: 700;
+}
+#jsonViewerSection .data-button.moviewise-summary:hover {
+  background: linear-gradient(135deg, #ee5a24 0%, #ff6b6b 100%);
 }
 
 /* Active button style */
