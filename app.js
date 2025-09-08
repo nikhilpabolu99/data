@@ -637,7 +637,8 @@ const LatestReleases = {
     const data = [
       {
         "movie": "OG (USA)",
-        "image": "https://via.placeholder.com/200x300/4facfe/white?text=OG",
+        //"image": "https://via.placeholder.com/200x300/4facfe/white?text=OG",
+         "image": "../images/og.jpg",
         "url": "https://raw.githubusercontent.com/nikhilpabolu99/data/main/movies/og/usa/20250907/og_usa_20250907.json"
       },
       {
@@ -1559,3 +1560,4 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
+
