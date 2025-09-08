@@ -183,18 +183,28 @@ body {
   backdrop-filter: blur(10px);
 }
 
-/* Smaller buttons inside JSON viewer */
+#jsonViewerSection #buttonGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;               /* reduce gap */
+  justify-content: flex-start;
+  max-height: calc(2 * (button height + vertical gap)); /* to limit max 2 lines */
+  overflow: hidden;       /* hide overflow if more */
+}
+
 #jsonViewerSection .data-button {
-  font-size: 12px !important;
-  padding: 6px 10px !important;
-  margin: 4px 6px !important;
-  min-width: 90px !important;
-  max-width: 180px;
+  flex: 1 1 auto;      /* allow shrinking and growing */
+  min-width: 80px;     /* adjust as needed for button readable size */
+  max-width: 120px;    /* restrict max width for more per line */
+  margin: 2px 3px;     /* small margins */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 12px !important;
+  padding: 6px 8px !important;
   border-radius: 6px !important;
 }
+
 
 #jsonViewerSection .data-button.moviewise-summary {
   font-size: 11px !important;
