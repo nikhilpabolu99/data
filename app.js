@@ -1,5 +1,5 @@
 // app.js - Movie Collections Website
-// Enhanced version with navbar functionality and improved UX
+// Enhanced version with navbar country filtering, movie explorer, and latest file loader
 
 /* =======================
    Configuration & State
@@ -40,16 +40,12 @@ const NavbarManager = {
   init: () => {
     const navbarToggle = document.getElementById('navbarToggle');
     const navbarMenu = document.getElementById('navbarMenu');
-
-    // Toggle mobile menu
     if (navbarToggle && navbarMenu) {
       navbarToggle.addEventListener('click', () => {
         navbarToggle.classList.toggle('active');
         navbarMenu.classList.toggle('active');
       });
     }
-
-    // Close menu when clicking on links
     document.querySelectorAll('.navbar-link, .dropdown-item').forEach(link => {
       link.addEventListener('click', () => {
         navbarToggle?.classList.remove('active');
@@ -57,21 +53,27 @@ const NavbarManager = {
       });
     });
 
-    // Smooth scrolling for navbar links
+    // Country dropdown handler
+    document.querySelectorAll('.dropdown-menu .dropdown-item').forEach(item => {
+      const parentDropdown = item.closest('.dropdown');
+      if (parentDropdown?.querySelector('.navbar-link.dropdown-toggle')?.textContent.includes('Country')) {
+        item.addEventListener('click', (e) => {
+          e.preventDefault();
+          const country = item.getAttribute('href').replace('#','').toLowerCase();
+          Explorer.showMoviesByCountry(country);
+        });
+      }
+    });
+
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
       anchor.addEventListener('click', function (e) {
         e.preventDefault();
         const target = document.querySelector(this.getAttribute('href'));
         if (target) {
-          target.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start'
-          });
+          target.scrollIntoView({behavior: 'smooth', block: 'start'});
         }
       });
     });
-
-    // Close dropdown on outside click
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.dropdown')) {
         document.querySelectorAll('.dropdown-menu').forEach(menu => {
@@ -80,13 +82,10 @@ const NavbarManager = {
         });
       }
     });
-
-    // Navbar scroll effect
     let lastScrollY = window.scrollY;
     window.addEventListener('scroll', () => {
       const navbar = document.querySelector('.navbar');
       const currentScrollY = window.scrollY;
-      
       if (navbar) {
         if (currentScrollY > lastScrollY && currentScrollY > 100) {
           navbar.style.transform = 'translateY(-100%)';
@@ -104,43 +103,34 @@ const NavbarManager = {
    ======================= */
 const Utils = {
   getAlphabetArray: () => ['0-9', 'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'],
-  
   matchesLetter: (char, letter) => {
     const upperChar = (char || '').toUpperCase();
     return letter === '0-9' ? /[0-9]/.test(upperChar) : upperChar === letter;
   },
-  
   formatDisplayText: (text) => String(text || '').replace(/_/g, ' ').toUpperCase(),
-  
   cleanJsonText: (text) => text.replace(/:\s*NaN/g, ': null'),
-  
   createLoadingElement: (text = 'Loading...') => {
     const loading = document.createElement('div');
-    loading.innerHTML = `
-      <div style="text-align:center;padding:50px;">
-        <div class="loading-spinner" style="margin-bottom:20px;"></div>
-        <p style="color:#666;font-size:1.1rem;">${text}</p>
-      </div>`;
+    loading.innerHTML = `<div style="text-align:center;padding:50px;">
+      <div class="loading-spinner" style="margin-bottom:20px;"></div>
+      <p style="color:#666;font-size:1.1rem;">${text}</p>
+    </div>`;
     return loading;
   },
-  
   createErrorElement: (title, message) => {
     const errorDiv = document.createElement('div');
-    errorDiv.innerHTML = `
-      <div class="error">
-        <h3>${title}</h3>
-        <p>${message}</p>
-      </div>`;
+    errorDiv.innerHTML = `<div class="error">
+      <h3>${title}</h3>
+      <p>${message}</p>
+    </div>`;
     return errorDiv;
   },
-  
   formatValue: (value) => {
     if (value === null || value === undefined) return 'N/A';
     if (typeof value === 'number') return value.toLocaleString();
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
   },
-
   showToast: (message, type = 'info') => {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
@@ -158,16 +148,12 @@ const Utils = {
       transform: translateX(100%);
       transition: all 0.3s ease;
       font-weight: 600;
-      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-    `;
-    
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);`;
     document.body.appendChild(toast);
-    
     setTimeout(() => {
       toast.style.opacity = '1';
       toast.style.transform = 'translateX(0)';
     }, 100);
-    
     setTimeout(() => {
       toast.style.opacity = '0';
       toast.style.transform = 'translateX(100%)';
@@ -178,7 +164,6 @@ const Utils = {
       }, 300);
     }, 3000);
   },
-
   debounce: (func, wait) => {
     let timeout;
     return function executedFunction(...args) {
@@ -204,28 +189,21 @@ const GitHubAPI = {
     if (CONFIG.githubToken) headers['Authorization'] = `token ${CONFIG.githubToken}`;
     return headers;
   },
-
   checkRateLimit: async () => {
     try {
-      const resp = await fetch('https://api.github.com/rate_limit', { 
-        headers: GitHubAPI.getHeaders() 
-      });
+      const resp = await fetch('https://api.github.com/rate_limit', { headers: GitHubAPI.getHeaders() });
       return await resp.json();
     } catch (err) {
       console.warn('Could not check rate limit:', err);
       return null;
     }
   },
-
   fetchFolderContents: async (path = "", retryCount = 0) => {
     const url = `${API_BASE}/${path}?ref=${CONFIG.branch}`;
     try {
       const response = await fetch(url, { headers: GitHubAPI.getHeaders() });
-      
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error(`Authentication failed (401). The GitHub token may be invalid.`);
-        }
+        if (response.status === 401) throw new Error(`Authentication failed (401). The GitHub token may be invalid.`);
         if (response.status === 403) {
           const rateLimit = await GitHubAPI.checkRateLimit();
           if (rateLimit && rateLimit.rate && rateLimit.rate.remaining === 0) {
@@ -234,12 +212,10 @@ const GitHubAPI = {
           }
           throw new Error(`Access forbidden (403).`);
         }
-        if (response.status === 404) {
+        if (response.status === 404)
           throw new Error(`Repository not found (404). Check ${CONFIG.owner}/${CONFIG.repo}.`);
-        }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      
       return await response.json();
     } catch (error) {
       if (retryCount === 0 && (error.name === 'TypeError' || error.message.includes('fetch'))) {
@@ -249,18 +225,13 @@ const GitHubAPI = {
       throw error;
     }
   },
-
   fetchJsonFile: async (url, retryCount = 0) => {
     try {
       const response = await fetch(url, { headers: GitHubAPI.getHeaders() });
-      
       if (!response.ok) {
-        if (response.status === 403) {
-          throw new Error(`Access forbidden (403). You may have hit the rate limit.`);
-        }
+        if (response.status === 403) throw new Error(`Access forbidden (403). You may have hit the rate limit.`);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      
       const rawText = await response.text();
       const cleaned = Utils.cleanJsonText(rawText);
       return JSON.parse(cleaned);
@@ -272,7 +243,6 @@ const GitHubAPI = {
       throw error;
     }
   },
-
   testAccess: async () => {
     try {
       await GitHubAPI.fetchFolderContents("");
@@ -294,7 +264,6 @@ const Navigation = {
     });
     AppState.currentView = view;
   },
-
   goBack: () => {
     if (AppState.navigationStack.length > 0) {
       const previous = AppState.navigationStack.pop();
@@ -305,7 +274,6 @@ const Navigation = {
       Navigation.goToRoot();
     }
   },
-
   goToRoot: () => {
     AppState.navigationStack = [];
     AppState.currentView = 'root';
@@ -315,21 +283,14 @@ const Navigation = {
       Explorer.loadFolders("", "explorer", true);
     }
   },
-
   reattachEventListeners: () => {
     const container = document.getElementById('explorer');
     if (!container) return;
-
-    // Back buttons
     container.querySelectorAll('.back-button').forEach(btn => {
       btn.onclick = () => Navigation.goBack();
     });
-
-    // Movies button
     const moviesBtn = container.querySelector('.explorer-button[data-action="movies"]');
     if (moviesBtn) moviesBtn.onclick = () => UI.showAlphabetNavigation();
-
-    // Alphabet buttons
     Utils.getAlphabetArray().forEach(letter => {
       const btn = container.querySelector(`[data-letter="${letter}"]`);
       if (btn) btn.onclick = () => Explorer.showMoviesByLetter(letter);
@@ -344,31 +305,25 @@ const Explorer = {
   initialize: async () => {
     AppState.navigationStack = [];
     AppState.currentView = 'root';
-
     const container = document.getElementById('explorer');
     if (!container) return;
-
     const loading = Utils.createLoadingElement('Testing repository access...');
     container.innerHTML = '';
     container.appendChild(loading);
-
     try {
       const accessTest = await GitHubAPI.testAccess();
       container.removeChild(loading);
-      
+
       if (!accessTest.success) {
         const error = Utils.createErrorElement("Repository Access Error", accessTest.error);
         container.appendChild(error);
         Utils.showToast('Failed to access repository', 'error');
         return;
       }
-
       Utils.showToast('Repository connected successfully', 'success');
       Explorer.loadFolders("", "explorer", true);
     } catch (err) {
-      if (container.contains(loading)) {
-        container.removeChild(loading);
-      }
+      if (container.contains(loading)) container.removeChild(loading);
       const error = Utils.createErrorElement("Initialization Error", err.message);
       container.appendChild(error);
       Utils.showToast('Failed to initialize explorer', 'error');
@@ -378,7 +333,6 @@ const Explorer = {
   loadFolders: async (path = "", containerId = "explorer", isRoot = false) => {
     const container = document.getElementById(containerId);
     if (!container) return;
-
     try {
       const data = await GitHubAPI.fetchFolderContents(path);
       let itemsAdded = 0;
@@ -390,14 +344,12 @@ const Explorer = {
           const btn = document.createElement("button");
           btn.textContent = "📂 " + item.name;
           btn.className = "explorer-button";
-
           if (item.name === CONFIG.moviesFolder && isRoot) {
             btn.setAttribute('data-action', 'movies');
             btn.onclick = () => UI.showAlphabetNavigation();
           } else {
             btn.onclick = () => Explorer.expandFolder(item, container);
           }
-
           container.appendChild(btn);
           itemsAdded++;
         }
@@ -418,13 +370,11 @@ const Explorer = {
       if (itemsAdded === 0 && isRoot) {
         const error = Utils.createErrorElement(
           "No Movies Folder Found",
-          `Could not find the '${CONFIG.moviesFolder}' folder in ${CONFIG.owner}/${CONFIG.repo}. Make sure the repository is public and the folder exists.`
+          `Could not find the '${CONFIG.moviesFolder}' folder in ${CONFIG.owner}/${CONFIG.repo}.`
         );
         container.appendChild(error);
       }
-
     } catch (err) {
-      console.error("Error loading folders:", err);
       const error = Utils.createErrorElement("Error Loading Repository", err.message);
       container.appendChild(error);
       Utils.showToast('Error loading data', 'error');
@@ -447,18 +397,14 @@ const Explorer = {
   showMoviesByLetter: async (letter) => {
     const container = document.getElementById('explorer');
     if (!container) return;
-
     Navigation.pushState(`letter-${letter}`);
-
     UI.clearAndShowHeader(container, `← Back to Letters`, `Movies starting with "${letter}"`);
     const loading = Utils.createLoadingElement('Loading movies...');
     container.appendChild(loading);
 
     try {
       const data = await GitHubAPI.fetchFolderContents(CONFIG.moviesFolder);
-      if (container.contains(loading)) {
-        container.removeChild(loading);
-      }
+      if (container.contains(loading)) container.removeChild(loading);
 
       const filteredFolders = data.filter(item => {
         if (item.type !== "dir") return false;
@@ -475,10 +421,7 @@ const Explorer = {
         });
       }
     } catch (err) {
-      console.error("Error loading movies by letter:", err);
-      if (container.contains(loading)) {
-        container.removeChild(loading);
-      }
+      if (container.contains(loading)) container.removeChild(loading);
       const error = Utils.createErrorElement("Error Loading Movies", err.message);
       container.appendChild(error);
       Utils.showToast('Failed to load movies', 'error');
@@ -488,25 +431,17 @@ const Explorer = {
   showMovieFolder: async (path, folderName) => {
     const container = document.getElementById('explorer');
     if (!container) return;
-
     Navigation.pushState(`movie-${path}`);
-
     UI.clearAndShowHeader(container, `← Back to Movies`, folderName);
-
     const loading = Utils.createLoadingElement('Loading folder contents...');
     container.appendChild(loading);
-
     try {
       const data = await GitHubAPI.fetchFolderContents(path);
-      if (container.contains(loading)) {
-        container.removeChild(loading);
-      }
-
+      if (container.contains(loading)) container.removeChild(loading);
       if (data.length === 0) {
         UI.showNoData(container, "This folder is empty");
         return;
       }
-
       data.forEach(item => {
         if (item.type === "dir") {
           const btn = UI.createButton("📂 " + item.name, "explorer-button");
@@ -519,10 +454,7 @@ const Explorer = {
         }
       });
     } catch (err) {
-      console.error("Error loading movie folder:", err);
-      if (container.contains(loading)) {
-        container.removeChild(loading);
-      }
+      if (container.contains(loading)) container.removeChild(loading);
       const error = Utils.createErrorElement("Error Loading Folder", err.message);
       container.appendChild(error);
     }
@@ -531,25 +463,18 @@ const Explorer = {
   showSubFolder: async (path, folderName) => {
     const container = document.getElementById('explorer');
     if (!container) return;
-
     Navigation.pushState(`folder-${path}`);
-
     UI.clearAndShowHeader(container, `← Back`, folderName);
-
     const loading = Utils.createLoadingElement('Loading folder contents...');
     container.appendChild(loading);
 
     try {
       const data = await GitHubAPI.fetchFolderContents(path);
-      if (container.contains(loading)) {
-        container.removeChild(loading);
-      }
-
+      if (container.contains(loading)) container.removeChild(loading);
       if (data.length === 0) {
         UI.showNoData(container, "This folder is empty");
         return;
       }
-
       data.forEach(item => {
         if (item.type === "dir") {
           const btn = UI.createButton("📂 " + item.name, "explorer-button");
@@ -561,14 +486,86 @@ const Explorer = {
           container.appendChild(btn);
         }
       });
-
     } catch (err) {
-      console.error("Error loading folder:", err);
-      if (container.contains(loading)) {
-        container.removeChild(loading);
-      }
+      if (container.contains(loading)) container.removeChild(loading);
       const error = Utils.createErrorElement("Error Loading Folder", err.message);
       container.appendChild(error);
+    }
+  },
+
+  // ----- COUNTRY FILTERING -----
+  showMoviesByCountry: async function(country) {
+    const container = document.getElementById('explorer');
+    if (!container) return;
+    Navigation.pushState(`country-${country}`);
+    UI.clearAndShowHeader(container, `← Back to Country Selection`, `Movies with "${country.toUpperCase()}" Collections`);
+    const loading = Utils.createLoadingElement(`Searching for "${country}" data...`);
+    container.appendChild(loading);
+
+    try {
+      const movies = await GitHubAPI.fetchFolderContents(CONFIG.moviesFolder);
+      if (container.contains(loading)) container.removeChild(loading);
+      const availableMovies = [];
+      for (const movie of movies) {
+        if (movie.type === 'dir') {
+          const countries = await GitHubAPI.fetchFolderContents(`${CONFIG.moviesFolder}/${movie.name}`);
+          if (countries.some(f => f.type === 'dir' && f.name.toLowerCase() === country)) {
+            availableMovies.push(movie.name);
+          }
+        }
+      }
+      if (availableMovies.length === 0) {
+        UI.showNoData(container, `No movies have collections for "${country}"`);
+      } else {
+        availableMovies.forEach(movieName => {
+          const btn = UI.createButton(movieName, "explorer-button");
+          btn.onclick = () => Explorer.showLatestCountryData(movieName, country);
+          container.appendChild(btn);
+        });
+      }
+    } catch (err) {
+      if (container.contains(loading)) container.removeChild(loading);
+      const error = Utils.createErrorElement("Error Loading Country", err.message);
+      container.appendChild(error);
+      Utils.showToast('Failed to load country data', 'error');
+    }
+  },
+
+  showLatestCountryData: async function(movieName, country) {
+    const container = document.getElementById('explorer');
+    if (!container) return;
+    Navigation.pushState(`movie-${movieName}-country-${country}`);
+    UI.clearAndShowHeader(container, `← Back to Countries`, `${movieName} – ${country.toUpperCase()} Latest Collection`);
+    const loading = Utils.createLoadingElement(`Loading latest collection for ${movieName} (${country})...`);
+    container.appendChild(loading);
+
+    try {
+      const countryFolder = `${CONFIG.moviesFolder}/${movieName}/${country}`;
+      const dateFolders = await GitHubAPI.fetchFolderContents(countryFolder);
+      const latestDateFolder = dateFolders
+        .filter(f => f.type === 'dir' && /^\d{8}$/.test(f.name))
+        .sort((a, b) => b.name.localeCompare(a.name))[0];
+      if (!latestDateFolder) {
+        if (container.contains(loading)) container.removeChild(loading);
+        UI.showNoData(container, "No datewise data available for this movie in this country.");
+        return;
+      }
+      const files = await GitHubAPI.fetchFolderContents(`${countryFolder}/${latestDateFolder.name}`);
+      const latestJson = files
+        .filter(f => f.type === 'file' && f.name.endsWith('.json'))
+        .sort((a, b) => b.name.localeCompare(a.name))[0];
+      if (!latestJson) {
+        if (container.contains(loading)) container.removeChild(loading);
+        UI.showNoData(container, "No collection file found for the latest date.");
+        return;
+      }
+      if (container.contains(loading)) container.removeChild(loading);
+      JsonViewer.openJsonViewer(latestJson.download_url, latestJson.name);
+    } catch (err) {
+      if (container.contains(loading)) container.removeChild(loading);
+      const error = Utils.createErrorElement("Error Loading Data", err.message);
+      container.appendChild(error);
+      Utils.showToast('Failed to load latest collection', 'error');
     }
   }
 };
@@ -1397,42 +1394,28 @@ async function downloadTableAsImage() {
    Event Listeners & Initialization
    ======================= */
 document.addEventListener('DOMContentLoaded', () => {
-  // Initialize navbar
   NavbarManager.init();
-  
-  // Initialize explorer
   Explorer.initialize();
-  
-  // Load latest releases
   LatestReleases.load();
 
-  // Back button
   const backButton = document.getElementById('backButton');
   if (backButton) {
     backButton.addEventListener('click', () => JsonViewer.showExplorer());
   }
-
-  // Download button
   const downloadBtn = document.getElementById('downloadTableBtn');
   if (downloadBtn) {
     downloadBtn.addEventListener('click', downloadTableAsImage);
   }
-
-  // Clear filters button
   const clearBtn = document.getElementById('clearFiltersBtn');
   if (clearBtn) {
     clearBtn.addEventListener('click', Filters.clear);
   }
-
-  // Column filter
   const columnFilter = document.getElementById('columnFilter');
   if (columnFilter) {
     columnFilter.addEventListener('change', () => {
       debounceApplyFilters();
     });
   }
-
-  // Debounce wrapper around applyFilters
   let debounceTimer = null;
   window.debounceApplyFilters = () => {
     if (debounceTimer) clearTimeout(debounceTimer);
@@ -1441,24 +1424,18 @@ document.addEventListener('DOMContentLoaded', () => {
       debounceTimer = null;
     }, 250);
   };
-
-  // Search input (debounced)
   const searchInput = document.getElementById('searchInput');
   if (searchInput) {
     searchInput.addEventListener('input', () => {
       debounceApplyFilters();
     });
   }
-
-  // Handle window resize for responsive design
   let resizeTimer = null;
   window.addEventListener('resize', () => {
     if (resizeTimer) clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      // Recalculate table dimensions if needed
       const tableContainer = document.getElementById('tableContainer');
       if (tableContainer && tableContainer.style.display !== 'none') {
-        // Force redraw
         tableContainer.style.display = 'none';
         setTimeout(() => {
           tableContainer.style.display = 'block';
@@ -1466,10 +1443,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }, 250);
   });
-
-  // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
-    // Escape key to go back
     if (e.key === 'Escape') {
       if (AppState.currentView !== 'root') {
         Navigation.goBack();
@@ -1477,22 +1451,15 @@ document.addEventListener('DOMContentLoaded', () => {
         JsonViewer.showExplorer();
       }
     }
-    
-    // Ctrl/Cmd + F to focus search
     if ((e.ctrlKey || e.metaKey) && e.key === 'f' && document.getElementById('searchInput')) {
       e.preventDefault();
       document.getElementById('searchInput').focus();
     }
   });
-
-  // Enhanced error handling
   window.addEventListener('unhandledrejection', (event) => {
-    console.error('Unhandled promise rejection:', event.reason);
     Utils.showToast('An unexpected error occurred', 'error');
   });
-
   window.addEventListener('error', (event) => {
-    console.error('Global error:', event.error);
     Utils.showToast('An unexpected error occurred', 'error');
   });
 });
@@ -1555,5 +1522,3 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
-
-
