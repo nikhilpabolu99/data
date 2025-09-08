@@ -185,28 +185,30 @@ body {
 
 #jsonViewerSection #buttonGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); /* fluid columns */
-  gap: 12px;
-  width: 100%;   /* full width */
-  padding: 0;    /* remove padding to avoid internal gaps */
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 4px;          /* reduced gap from 12px to 4px */
+  width: 100%;
+  padding: 0;
   box-sizing: border-box;
-  margin: 0;     /* remove margin that can cause outside gaps */
+  margin: 0;
 }
-.data-button:hover {
-  background-color: #e6f3ff;
-  box-shadow: 0 4px 12px rgba(79,172,254,0.15);
-}
+
 .data-button {
-  width: 100%;             /* make buttons fill their grid cell */
+  width: 100%;
   box-sizing: border-box;
-  text-align: center;      /* center text inside buttons */
-  padding: 8px 15px;
+  text-align: center;
+  padding: 6px 10px;  /* reduced padding for tighter buttons */
   font-weight: 600;
   cursor: pointer;
   border: 1px solid #4facfe;
-  border-radius: 8px;
+  border-radius: 6px;
   background-color: white;
   transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.data-button:hover {
+  background-color: #e6f3ff;
+  box-shadow: 0 3px 8px rgba(79,172,254,0.15);
 }
 
 #jsonViewerSection .data-button {
