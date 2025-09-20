@@ -647,6 +647,12 @@ const LatestReleases = {
         //"url": "https://raw.githubusercontent.com/nikhilpabolu99/data/main/movies/mirai/20250907/mirai_usa_20250907.json"
          movieFolderName: "mirai",
     movieDisplayName: "Mirai"
+      },
+        {
+        "movie": "KantaraChapter1",
+         "image": "../images/kantarach1.jpeg",
+         movieFolderName: "kantarach1",
+         movieDisplayName: "KantaraChapter1"
       }
     ];
 
@@ -1551,6 +1557,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
+
 
 
 
