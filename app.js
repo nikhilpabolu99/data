@@ -656,9 +656,9 @@ const LatestReleases = {
       },
      {
         "movie": "Ustaad Bhagath Singh",
-         "image": "images/UstaadBhagathSingh.jpeg",
-         movieFolderName: "UstaadBhagathSingh",
-         movieDisplayName: "UstaadBhagathSingh"
+         "image": "images/UstaadBhagatSingh.jpeg",
+         movieFolderName: "UstaadBhagatSingh",
+         movieDisplayName: "UstaadBhagatSingh"
       }  
     ];
 
@@ -1563,6 +1563,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
+
 
 
 
