@@ -641,7 +641,7 @@ const LatestReleases = {
          movieDisplayName: "Dhurandhar2"
       },
      {
-        "movie": "Ustaad Bhagath Singh",
+        "movie": "ubs",
          "image": "images/ubs.jpg",
          movieFolderName: "ubs",
          movieDisplayName: "UstaadBhagatSingh"
@@ -1549,6 +1549,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
+
 
 
 
