@@ -633,12 +633,12 @@ const LatestReleases = {
   load: () => {
     const data = [
       {
-        "movie": "OG",
+        "movie": "Dhurandhar2",
         //"image": "https://via.placeholder.com/200x300/4facfe/white?text=OG",
-         "image": "images/og.jpg",
+         "image": "images/Dhurandhar2.jpg",
         //"url": "https://raw.githubusercontent.com/nikhilpabolu99/data/main/movies/og/usa/20250907/og_usa_20250907.json"
-         movieFolderName: "og",
-         movieDisplayName: "OG"
+         movieFolderName: "Dhurandhar2",
+         movieDisplayName: "Dhurandhar2"
       },
       {
         "movie": "Mirai", 
@@ -653,7 +653,13 @@ const LatestReleases = {
          "image": "images/kantarach1.jpeg",
          movieFolderName: "kantarach1",
          movieDisplayName: "KantaraChapter1"
-      }
+      },
+     {
+        "movie": "Ustaad Bhagath Singh",
+         "image": "images/UstaadBhagathSingh.jpeg",
+         movieFolderName: "UstaadBhagathSingh",
+         movieDisplayName: "UstaadBhagathSingh"
+      }  
     ];
 
     const container = document.getElementById('latestReleases');
@@ -1557,6 +1563,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
+
 
 
 
