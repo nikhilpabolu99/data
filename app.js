@@ -637,16 +637,8 @@ const LatestReleases = {
         //"image": "https://via.placeholder.com/200x300/4facfe/white?text=OG",
          "image": "images/Dhurandhar2.jpg",
         //"url": "https://raw.githubusercontent.com/nikhilpabolu99/data/main/movies/og/usa/20250907/og_usa_20250907.json"
-         movieFolderName: "Dhurandhar2",
+         movieFolderName: "dhur",
          movieDisplayName: "Dhurandhar2"
-      },
-      {
-        "movie": "Mirai", 
-        //"image": "https://via.placeholder.com/200x300/ff6b6b/white?text=MIRAI",
-         "image": "images/mirai.jpg",
-        //"url": "https://raw.githubusercontent.com/nikhilpabolu99/data/main/movies/mirai/20250907/mirai_usa_20250907.json"
-         movieFolderName: "mirai",
-    movieDisplayName: "Mirai"
       },
      {
         "movie": "Ustaad Bhagath Singh",
@@ -1557,6 +1549,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
+
 
 
 
