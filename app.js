@@ -633,7 +633,7 @@ const LatestReleases = {
   load: () => {
     const data = [
       {
-        "movie": "Dhurandhar2",
+        "movie": "dhur",
         //"image": "https://via.placeholder.com/200x300/4facfe/white?text=OG",
          "image": "images/Dhurandhar2.jpg",
         //"url": "https://raw.githubusercontent.com/nikhilpabolu99/data/main/movies/og/usa/20250907/og_usa_20250907.json"
@@ -644,7 +644,7 @@ const LatestReleases = {
         "movie": "ubs",
          "image": "images/ubs.jpg",
          movieFolderName: "ubs",
-         movieDisplayName: "UstaadBhagatSingh"
+         movieDisplayName: "ubs"
       }  
     ];
 
@@ -1549,6 +1549,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
+
 
 
 
