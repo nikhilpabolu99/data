@@ -648,16 +648,10 @@ const LatestReleases = {
          movieFolderName: "mirai",
     movieDisplayName: "Mirai"
       },
-        {
-        "movie": "KantaraChapter1",
-         "image": "images/kantarach1.jpeg",
-         movieFolderName: "kantarach1",
-         movieDisplayName: "KantaraChapter1"
-      },
      {
         "movie": "Ustaad Bhagath Singh",
-         "image": "images/UstaadBhagatSingh.jpeg",
-         movieFolderName: "UstaadBhagatSingh",
+         "image": "images/ubs.jpg",
+         movieFolderName: "ubs",
          movieDisplayName: "UstaadBhagatSingh"
       }  
     ];
@@ -1563,6 +1557,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
+
 
 
 
