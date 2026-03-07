@@ -1240,7 +1240,7 @@ const DataTable = {
     `;
 
     const watermark = document.createElement('div');
-    watermark.textContent = '@nikhilntr9';
+    watermark.textContent = '@TheCineNation';
     watermark.style.cssText = `
       position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-45deg);
       font-size:3em;font-weight:bold;color:rgba(79,172,254,0.2);pointer-events:none;z-index:10;white-space:nowrap;
@@ -1549,6 +1549,7 @@ if (typeof module !== 'undefined' && module.exports) {
     NavbarManager
   };
 }
+
 
 
 
