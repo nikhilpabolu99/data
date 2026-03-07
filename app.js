@@ -360,7 +360,7 @@ const Explorer = {
         if (item.type === 'file' && item.name.endsWith('.json')) {
           const depth = path.split('/').filter(Boolean).length;
           if (path.startsWith(`${CONFIG.moviesFolder}/`) && depth >= 1) {
-            const btn = UI.btn('📄 ' + item.name, 'explorer-button file-button');
+            const btn = UI.btn('🎬 ' + item.name.replace(/.json$/, ''), 'explorer-button file-button');
             btn.onclick = () => JsonViewer.open(item.download_url, item.name, item.path);
             container.appendChild(btn);
           }
@@ -435,7 +435,7 @@ const Explorer = {
           btn.onclick = () => this.showSubFolder(item.path, item.name, path, name);
           container.appendChild(btn);
         } else if (item.type === 'file' && item.name.endsWith('.json')) {
-          const btn = UI.btn('📄 ' + item.name, 'explorer-button file-button');
+          const btn = UI.btn('🎬 ' + item.name.replace(/.json$/, ''), 'explorer-button file-button');
           btn.onclick = () => JsonViewer.open(item.download_url, item.name, item.path);
           container.appendChild(btn);
         }
