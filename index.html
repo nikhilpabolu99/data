@@ -1317,6 +1317,47 @@
       90%  { opacity: 0.3; }
       100% { transform: translateY(-160px) rotate(360deg) scale(0.6); opacity: 0; }
     }
+    /* ===== ABOUT POPUP ===== */
+    #aboutOverlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(8px);
+      z-index: 9990;
+      display: none; align-items: center; justify-content: center; padding: 20px;
+    }
+    #aboutOverlay.show { display: flex; }
+
+    #aboutCard {
+      background: var(--bg-card);
+      border: 1px solid rgba(201,168,76,0.3);
+      border-radius: 20px;
+      padding: 44px 48px;
+      max-width: 540px; width: 100%;
+      position: relative;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 50px rgba(201,168,76,0.08);
+      animation: aboutIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+
+    @keyframes aboutIn {
+      from { opacity:0; transform: scale(0.88) translateY(24px); }
+      to   { opacity:1; transform: scale(1)    translateY(0); }
+    }
+
+    #aboutCard::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold), var(--gold-light), var(--gold), transparent);
+      border-radius: 20px 20px 0 0;
+    }
+
+    .about-close-x {
+      position: absolute; top: 16px; right: 18px;
+      background: transparent; border: none;
+      color: var(--text-muted); font-size: 1.2rem;
+      cursor: pointer; padding: 4px 8px; border-radius: 6px;
+      transition: color 0.2s;
+    }
+    .about-close-x:hover { color: var(--gold); }
   </style>
 </head>
 <body>
@@ -1344,6 +1385,41 @@
         <span style="color: var(--gold); font-weight: 600;">Happy exploring! ✨</span>
       </div>
       <button class="congrats-close" id="congratsCloseBtn">Let's Explore →</button>
+    </div>
+  </div>
+
+  <!-- About Popup -->
+  <div id="aboutOverlay">
+    <div id="aboutCard">
+      <button class="about-close-x" id="aboutCloseBtn">✕</button>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">
+        <div style="font-size:2.4rem;line-height:1;">🎬</div>
+        <div>
+          <h2 style="font-family:'Playfair Display',serif;color:var(--gold);font-size:1.6rem;font-weight:900;letter-spacing:-0.01em;">MeherNolan</h2>
+          <p style="font-family:'Space Mono',monospace;font-size:0.65rem;color:var(--text-muted);letter-spacing:0.15em;text-transform:uppercase;margin-top:2px;">Box Office Intelligence</p>
+        </div>
+      </div>
+      <div style="width:40px;height:1px;background:linear-gradient(90deg,var(--gold),transparent);margin-bottom:20px;"></div>
+      <p style="color:var(--text-secondary);font-size:0.92rem;line-height:1.8;margin-bottom:16px;">
+        <strong style="color:var(--text-primary);">MeherNolan</strong> is a real-time box office intelligence platform tracking collection data across multiple territories — India, USA, UK, Canada, and Australia.
+      </p>
+      <p style="color:var(--text-secondary);font-size:0.92rem;line-height:1.8;margin-bottom:16px;">
+        Every show, every seat, every rupee and dollar — updated live from the ground up. Powered by <strong style="color:var(--gold);">@TheCineNation</strong>, the most dedicated box office tracking community in India.
+      </p>
+      <p style="color:var(--text-secondary);font-size:0.92rem;line-height:1.8;margin-bottom:28px;">
+        Browse collections by movie, filter by territory, and download detailed analytics — all in one place.
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <a href="https://x.com/TheCineNation" target="_blank" rel="noopener"
+           style="display:inline-flex;align-items:center;gap:8px;background:var(--gold);color:var(--bg-deep);
+                  padding:11px 22px;border-radius:8px;text-decoration:none;font-family:'DM Sans',sans-serif;
+                  font-weight:700;font-size:0.82rem;letter-spacing:0.06em;text-transform:uppercase;
+                  transition:all 0.2s;">𝕏 Follow @TheCineNation</a>
+        <button id="aboutCloseBtnBottom"
+           style="background:transparent;color:var(--text-secondary);border:1px solid var(--border-soft);
+                  padding:11px 22px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.82rem;
+                  cursor:pointer;transition:all 0.2s;">Close</button>
+      </div>
     </div>
   </div>
 
@@ -1376,8 +1452,8 @@
             <a href="#australia" class="dropdown-item">Australia</a>
           </div>
         </li>
-        <li><a href="#about" class="navbar-link">About</a></li>
-        <li><a href="#contact" class="navbar-link">Contact</a></li>
+        <li><a href="#" class="navbar-link" id="navAboutLink">About</a></li>
+        <li><a href="https://x.com/TheCineNation" target="_blank" rel="noopener" class="navbar-link">Contact</a></li>
       </ul>
       <div class="navbar-toggle" id="navbarToggle">
         <span></span>
@@ -1511,16 +1587,16 @@
             <li><a href="#home">Home</a></li>
             <li><a href="#latest">Latest Releases</a></li>
             <li><a href="#explorerSection">Collections</a></li>
-            <li><a href="#about">About</a></li>
+            <li><a href="#" id="footerAboutLink">About</a></li>
           </ul>
         </div>
         <div class="footer-section">
           <h4>Countries</h4>
           <ul>
-            <li><a href="#india">India</a></li>
-            <li><a href="#usa">USA</a></li>
-            <li><a href="#uk">UK</a></li>
-            <li><a href="#canada">Canada</a></li>
+            <li><a href="#" class="footer-country-link" data-country="india">India</a></li>
+            <li><a href="#" class="footer-country-link" data-country="usa">USA</a></li>
+            <li><a href="#" class="footer-country-link" data-country="uk">UK</a></li>
+            <li><a href="#" class="footer-country-link" data-country="canada">Canada</a></li>
           </ul>
         </div>
         <div class="footer-section">
@@ -1690,6 +1766,50 @@
       if (e.key === 'Escape' && overlay.classList.contains('show')) closePopup();
     });
   })();
+
+  /* ============ ABOUT POPUP ============ */
+  (function() {
+    const aboutOverlay = document.getElementById('aboutOverlay');
+
+    function openAbout(e) {
+      if (e) e.preventDefault();
+      aboutOverlay.classList.add('show');
+    }
+
+    function closeAbout() {
+      aboutOverlay.classList.remove('show');
+    }
+
+    // Navbar About link
+    document.getElementById('navAboutLink')?.addEventListener('click', openAbout);
+    // Footer Quick Links About
+    document.getElementById('footerAboutLink')?.addEventListener('click', openAbout);
+    // Close buttons
+    document.getElementById('aboutCloseBtn')?.addEventListener('click', closeAbout);
+    document.getElementById('aboutCloseBtnBottom')?.addEventListener('click', closeAbout);
+    // Click backdrop to close
+    aboutOverlay?.addEventListener('click', function(e) {
+      if (e.target === aboutOverlay) closeAbout();
+    });
+    // Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && aboutOverlay?.classList.contains('show')) closeAbout();
+    });
+  })();
+
+  /* ============ FOOTER COUNTRY LINKS ============ */
+  document.querySelectorAll('.footer-country-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      const country = this.getAttribute('data-country');
+      // Use the same Explorer + Navigation reset as the navbar dropdown
+      if (typeof Navigation !== 'undefined' && typeof Explorer !== 'undefined') {
+        Navigation.resetToExplorer();
+        Explorer.showMoviesByCountry(country);
+        document.getElementById('explorerSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
   </script>
 </body>
 </html>
