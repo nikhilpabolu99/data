@@ -141,12 +141,50 @@ const GitHubAPI = {
     return data;
   },
 
-  async fetchJsonFile(url) {
+  async fetchJsonFile(url, filePath = null) {
     const cacheKey = `file:${url}`;
     if (this._cache.has(cacheKey)) return this._cache.get(cacheKey);
-    const res = await this._fetch(url);
-    const text = await res.text();
-    const data = JSON.parse(Utils.cleanJsonText(text));
+
+    let data = null;
+
+    // Strategy 1: Use GitHub API contents endpoint (works with token, no CORS issues)
+    if (filePath) {
+      try {
+        const apiUrl = `${API_BASE}/${filePath}?ref=${CONFIG.branch}`;
+        const res = await this._fetch(apiUrl);
+        const json = await res.json();
+        // GitHub API returns file content as base64
+        if (json.content && json.encoding === 'base64') {
+          const decoded = atob(json.content.replace(/\n/g, ''));
+          data = JSON.parse(Utils.cleanJsonText(decoded));
+        }
+      } catch (e) {
+        console.warn('API contents fetch failed, trying raw URL:', e.message);
+      }
+    }
+
+    // Strategy 2: Fetch raw URL directly (works without token for public repos)
+    if (!data) {
+      try {
+        const rawUrl = url.includes('raw.githubusercontent.com')
+          ? url
+          : url.replace('https://github.com', 'https://raw.githubusercontent.com').replace('/blob/', '/');
+        const res = await fetch(rawUrl, { headers: { 'Cache-Control': 'no-cache' } });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        data = JSON.parse(Utils.cleanJsonText(text));
+      } catch (e) {
+        console.warn('Raw URL fetch failed, trying API with auth:', e.message);
+      }
+    }
+
+    // Strategy 3: Fetch download_url with auth headers as last resort
+    if (!data) {
+      const res = await this._fetch(url);
+      const text = await res.text();
+      data = JSON.parse(Utils.cleanJsonText(text));
+    }
+
     this._cache.set(cacheKey, data);
     return data;
   },
@@ -323,7 +361,7 @@ const Explorer = {
           const depth = path.split('/').filter(Boolean).length;
           if (path.startsWith(`${CONFIG.moviesFolder}/`) && depth >= 1) {
             const btn = UI.btn('📄 ' + item.name, 'explorer-button file-button');
-            btn.onclick = () => JsonViewer.open(item.download_url, item.name);
+            btn.onclick = () => JsonViewer.open(item.download_url, item.name, item.path);
             container.appendChild(btn);
           }
         }
@@ -398,7 +436,7 @@ const Explorer = {
           container.appendChild(btn);
         } else if (item.type === 'file' && item.name.endsWith('.json')) {
           const btn = UI.btn('📄 ' + item.name, 'explorer-button file-button');
-          btn.onclick = () => JsonViewer.open(item.download_url, item.name);
+          btn.onclick = () => JsonViewer.open(item.download_url, item.name, item.path);
           container.appendChild(btn);
         }
       });
@@ -463,7 +501,7 @@ const Explorer = {
         .sort((a, b) => b.name.localeCompare(a.name))[0];
       loading.remove();
       if (!json) { UI.noData(container, 'No collection file found.'); return; }
-      JsonViewer.open(json.download_url, json.name);
+      JsonViewer.open(json.download_url, json.name, json.path);
     } catch (err) {
       loading.remove();
       container.appendChild(Utils.createError('Error', err.message));
@@ -631,7 +669,7 @@ const JsonViewer = {
     SummaryDisplay.hide();
   },
 
-  async open(url, filename) {
+  async open(url, filename, filePath = null) {
     this.show();
     const loading = document.getElementById('loadingSection');
     const errorSec = document.getElementById('errorSection');
@@ -645,7 +683,7 @@ const JsonViewer = {
     SummaryDisplay.hide();
 
     try {
-      AppState.jsonData = await GitHubAPI.fetchJsonFile(url);
+      AppState.jsonData = await GitHubAPI.fetchJsonFile(url, filePath);
       if (!AppState.jsonData || typeof AppState.jsonData !== 'object') throw new Error('Invalid JSON structure');
       if (!Object.values(AppState.jsonData).some(v => Array.isArray(v))) throw new Error('No array data found in file');
 
