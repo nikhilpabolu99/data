@@ -416,7 +416,19 @@ const LatestReleases = {
           <div class="movie-card-badge">Live Data</div>
         </div>`;
       card.onclick = async () => {
+        // If JSON viewer is open, close it first
+        document.getElementById('jsonViewerSection')?.classList.remove('show');
+        document.getElementById('explorerSection')?.classList.remove('hidden');
+        JsonViewer._reset();
+
+        // Reset navigation so we're starting fresh (not mid-stack)
+        AppState.navigationStack = [];
+        AppState.currentView = 'root';
+
+        // Now load the movie folder into the explorer
         await Explorer.showMovieFolder(`movies/${item.movieFolderName}`, item.movieDisplayName);
+
+        // Scroll to explorer section
         const sec = document.getElementById('explorerSection');
         if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
       };
