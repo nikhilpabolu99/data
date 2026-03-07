@@ -91,6 +91,9 @@ const Utils = {
    GITHUB API
 =========================== */
 const GitHubAPI = {
+  // In-memory cache — avoids re-fetching same folder/file in one session
+  _cache: new Map(),
+
   getHeaders() {
     const h = { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'MeherNolan-App' };
     if (CONFIG.githubToken) h['Authorization'] = `token ${CONFIG.githubToken}`;
@@ -101,9 +104,22 @@ const GitHubAPI = {
     try {
       const res = await fetch(url, { headers: this.getHeaders() });
       if (!res.ok) {
-        if (res.status === 401) throw new Error('Authentication failed (401).');
-        if (res.status === 403) throw new Error('Access forbidden — possible rate limit (403).');
-        if (res.status === 404) throw new Error(`Not found (404): ${url}`);
+        if (res.status === 401) throw new Error('Invalid GitHub token (401). Please update your token in Settings.');
+        if (res.status === 403) {
+          // Check rate limit headers
+          const reset = res.headers.get('X-RateLimit-Reset');
+          let msg = 'GitHub API rate limit reached (60 requests/hour for unauthenticated use).';
+          if (reset) {
+            const resetTime = new Date(parseInt(reset) * 1000);
+            const mins = Math.ceil((resetTime - Date.now()) / 60000);
+            msg += ` Resets in ~${mins} minute${mins !== 1 ? 's' : ''}.`;
+          }
+          msg += ' Add a GitHub token to get 5,000 requests/hour.';
+          // Auto-open settings modal so user can add token immediately
+          setTimeout(() => Settings.promptForToken(msg), 100);
+          throw new Error(msg);
+        }
+        if (res.status === 404) throw new Error(`Path not found (404). Check repo structure.`);
         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
       return res;
@@ -117,19 +133,41 @@ const GitHubAPI = {
   },
 
   async fetchFolderContents(path = '') {
+    const cacheKey = `folder:${path}`;
+    if (this._cache.has(cacheKey)) return this._cache.get(cacheKey);
     const res = await this._fetch(`${API_BASE}/${path}?ref=${CONFIG.branch}`);
-    return res.json();
+    const data = await res.json();
+    this._cache.set(cacheKey, data);
+    return data;
   },
 
   async fetchJsonFile(url) {
+    const cacheKey = `file:${url}`;
+    if (this._cache.has(cacheKey)) return this._cache.get(cacheKey);
     const res = await this._fetch(url);
     const text = await res.text();
-    return JSON.parse(Utils.cleanJsonText(text));
+    const data = JSON.parse(Utils.cleanJsonText(text));
+    this._cache.set(cacheKey, data);
+    return data;
+  },
+
+  clearCache() { this._cache.clear(); },
+
+  async getRateLimit() {
+    try {
+      const res = await fetch('https://api.github.com/rate_limit', { headers: this.getHeaders() });
+      return await res.json();
+    } catch { return null; }
   },
 
   async testAccess() {
-    try { await this.fetchFolderContents(''); return { success: true }; }
-    catch (err) { return { success: false, error: err.message }; }
+    try {
+      await this.fetchFolderContents('');
+      const rl = await this.getRateLimit();
+      return { success: true, rateLimit: rl?.rate };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
   }
 };
 
@@ -256,7 +294,12 @@ const Explorer = {
       Utils.showToast('Failed to connect to repository', 'error');
       return;
     }
-    Utils.showToast('Connected successfully', 'success');
+    // Show rate limit info
+    if (access.rateLimit) {
+      const { remaining, limit } = access.rateLimit;
+      const type = remaining === limit ? 'success' : remaining < 10 ? 'error' : 'info';
+      Utils.showToast(`API: ${remaining}/${limit} requests remaining`, type);
+    }
     this.loadFolders('', 'explorer', true);
   },
 
@@ -950,10 +993,165 @@ const NavbarManager = {
 };
 
 /* ===========================
+   SETTINGS MODAL
+=========================== */
+const Settings = {
+  init() {
+    // Inject modal HTML into body
+    const modal = document.createElement('div');
+    modal.id = 'settingsModal';
+    modal.style.cssText = `
+      position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);
+      z-index:9998;display:none;align-items:center;justify-content:center;padding:20px;`;
+    modal.innerHTML = `
+      <div style="background:#13131a;border:1px solid rgba(201,168,76,0.3);border-radius:16px;
+                  padding:32px;max-width:480px;width:100%;position:relative;
+                  box-shadow:0 40px 80px rgba(0,0,0,0.6);">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;
+                    background:linear-gradient(90deg,#c9a84c,transparent);border-radius:16px 16px 0 0;"></div>
+        <h3 style="font-family:'Playfair Display',serif;color:#c9a84c;margin-bottom:6px;font-size:1.3rem;">⚙ Settings</h3>
+        <p style="color:#5a5852;font-size:0.8rem;margin-bottom:24px;font-family:'Space Mono',monospace;letter-spacing:0.06em;">GITHUB API CONFIGURATION</p>
+
+        <div id="rateLimitBanner" style="display:none;background:rgba(224,82,82,0.1);border:1px solid rgba(224,82,82,0.25);
+             border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:0.82rem;color:#e05252;line-height:1.6;"></div>
+
+        <label style="display:block;font-size:0.7rem;font-family:'Space Mono',monospace;
+                       letter-spacing:0.12em;text-transform:uppercase;color:#5a5852;margin-bottom:8px;">
+          GitHub Personal Access Token
+        </label>
+        <input id="tokenInput" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+          style="width:100%;background:#0e0e12;border:1px solid rgba(255,255,255,0.08);border-radius:8px;
+                 padding:12px 14px;color:#f0ede6;font-family:'Space Mono',monospace;font-size:0.82rem;
+                 outline:none;transition:border-color 0.2s;margin-bottom:8px;" />
+        <p style="color:#5a5852;font-size:0.75rem;line-height:1.6;margin-bottom:20px;">
+          A token gives you 5,000 requests/hour (vs 60 without). 
+          Create one at <strong style="color:#a09d94;">github.com → Settings → Developer settings → Personal access tokens</strong>. 
+          Select <strong style="color:#a09d94;">public_repo</strong> scope (read-only is fine).
+        </p>
+
+        <div id="rateLimitStatus" style="margin-bottom:20px;display:none;
+             background:#0e0e12;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px 16px;">
+          <div style="font-size:0.7rem;font-family:'Space Mono',monospace;color:#5a5852;letter-spacing:0.1em;margin-bottom:6px;">CURRENT RATE LIMIT</div>
+          <div id="rateLimitText" style="color:#f0ede6;font-size:0.88rem;"></div>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          <button id="saveTokenBtn" style="flex:1;background:#c9a84c;color:#070709;border:none;border-radius:8px;
+                  padding:12px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:0.85rem;
+                  cursor:pointer;transition:all 0.2s;">Save Token</button>
+          <button id="clearTokenBtn" style="background:transparent;color:#5a5852;border:1px solid rgba(255,255,255,0.08);
+                  border-radius:8px;padding:12px 16px;font-family:'DM Sans',sans-serif;font-size:0.82rem;
+                  cursor:pointer;transition:all 0.2s;">Clear</button>
+          <button id="closeSettingsBtn" style="background:transparent;color:#5a5852;border:1px solid rgba(255,255,255,0.08);
+                  border-radius:8px;padding:12px 16px;font-family:'DM Sans',sans-serif;font-size:0.82rem;
+                  cursor:pointer;transition:all 0.2s;">✕</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+
+    // Settings gear button in navbar
+    const gear = document.createElement('button');
+    gear.id = 'settingsBtn';
+    gear.textContent = '⚙';
+    gear.title = 'Settings & GitHub Token';
+    gear.style.cssText = `background:transparent;border:1px solid rgba(255,255,255,0.08);color:#a09d94;
+      padding:6px 12px;border-radius:6px;cursor:pointer;font-size:1rem;transition:all 0.2s;
+      margin-left:8px;`;
+    gear.onmouseenter = () => { gear.style.borderColor = 'rgba(201,168,76,0.4)'; gear.style.color = '#c9a84c'; };
+    gear.onmouseleave = () => { gear.style.borderColor = 'rgba(255,255,255,0.08)'; gear.style.color = '#a09d94'; };
+    gear.onclick = () => Settings.open();
+    document.querySelector('.navbar-container')?.appendChild(gear);
+
+    // Load saved token from sessionStorage (not localStorage — safer)
+    const saved = sessionStorage.getItem('gh_token');
+    if (saved) { CONFIG.githubToken = saved; GitHubAPI.clearCache(); }
+
+    // Wire buttons
+    document.getElementById('saveTokenBtn').onclick = () => Settings.save();
+    document.getElementById('clearTokenBtn').onclick = () => Settings.clearToken();
+    document.getElementById('closeSettingsBtn').onclick = () => Settings.close();
+    modal.addEventListener('click', e => { if (e.target === modal) Settings.close(); });
+    document.getElementById('tokenInput').addEventListener('focus', function() {
+      this.style.borderColor = 'rgba(201,168,76,0.5)';
+    });
+    document.getElementById('tokenInput').addEventListener('blur', function() {
+      this.style.borderColor = 'rgba(255,255,255,0.08)';
+    });
+  },
+
+  async open() {
+    const modal = document.getElementById('settingsModal');
+    const input = document.getElementById('tokenInput');
+    modal.style.display = 'flex';
+    if (CONFIG.githubToken) input.value = CONFIG.githubToken;
+
+    // Show current rate limit
+    const rl = await GitHubAPI.getRateLimit();
+    if (rl?.rate) {
+      const { remaining, limit, reset } = rl.rate;
+      const resetTime = new Date(reset * 1000).toLocaleTimeString();
+      const statusEl = document.getElementById('rateLimitStatus');
+      const textEl = document.getElementById('rateLimitText');
+      const banner = document.getElementById('rateLimitBanner');
+      statusEl.style.display = 'block';
+      textEl.innerHTML = `<span style="color:${remaining < 10 ? '#e05252' : '#52c97a'};font-weight:600;">${remaining}</span>
+        <span style="color:#5a5852;"> / ${limit} requests remaining · resets at ${resetTime}</span>`;
+      if (remaining === 0) {
+        banner.style.display = 'block';
+        banner.textContent = `⚠ Rate limit exhausted. Add a token below to continue browsing, or wait until ${resetTime}.`;
+      } else if (remaining < 15) {
+        banner.style.display = 'block';
+        banner.style.background = 'rgba(201,168,76,0.08)';
+        banner.style.borderColor = 'rgba(201,168,76,0.25)';
+        banner.style.color = '#c9a84c';
+        banner.textContent = `⚡ Running low on API requests (${remaining} left). Add a token to avoid interruptions.`;
+      }
+    }
+  },
+
+  close() {
+    document.getElementById('settingsModal').style.display = 'none';
+  },
+
+  save() {
+    const token = document.getElementById('tokenInput').value.trim();
+    if (!token) { Utils.showToast('Please enter a token', 'error'); return; }
+    CONFIG.githubToken = token;
+    sessionStorage.setItem('gh_token', token);
+    GitHubAPI.clearCache();
+    Utils.showToast('Token saved — reloading data…', 'success');
+    Settings.close();
+    // Re-initialize so new token is used immediately
+    const container = document.getElementById('explorer');
+    if (container) { container.innerHTML = ''; }
+    Explorer.initialize();
+  },
+
+  clearToken() {
+    CONFIG.githubToken = null;
+    sessionStorage.removeItem('gh_token');
+    GitHubAPI.clearCache();
+    document.getElementById('tokenInput').value = '';
+    Utils.showToast('Token cleared', 'info');
+  },
+
+  // Call this when a 403 is hit anywhere to prompt user
+  promptForToken(errorMsg) {
+    const banner = document.getElementById('rateLimitBanner');
+    if (banner) {
+      banner.style.display = 'block';
+      banner.textContent = errorMsg;
+    }
+    Settings.open();
+  }
+};
+
+/* ===========================
    INIT
 =========================== */
 document.addEventListener('DOMContentLoaded', () => {
   NavbarManager.init();
+  Settings.init();
   Explorer.initialize();
   LatestReleases.load();
 
@@ -968,6 +1166,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
+      const settingsModal = document.getElementById('settingsModal');
+      if (settingsModal?.style.display === 'flex') { Settings.close(); return; }
       if (AppState.currentView !== 'root') Navigation.goBack();
       else if (document.getElementById('jsonViewerSection')?.classList.contains('show')) JsonViewer.showExplorer();
     }
