@@ -330,36 +330,89 @@
 
     .btn-outline:hover { border-color: var(--border); color: var(--text-primary); transform: translateY(-2px); }
 
-    .hero-stats {
-      display: flex;
-      justify-content: center;
-      gap: 48px;
-      margin-top: 64px;
-      padding-top: 48px;
+    /* ===== WORLD MAP ===== */
+    .hero-map {
+      margin-top: 52px;
+      padding-top: 44px;
       border-top: 1px solid var(--border-soft);
       animation: fadeSlideUp 0.8s 0.4s var(--transition) both;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
     }
 
-    .hero-stat-item { text-align: center; }
-    .hero-stat-num {
-      font-family: 'Playfair Display', serif;
-      font-size: 2.2rem;
-      font-weight: 700;
-      color: var(--gold);
-      line-height: 1;
-    }
-    .hero-stat-label {
-      font-size: 0.72rem;
-      color: var(--text-muted);
+    .hero-map-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-top: 6px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hero-map-label::before,
+    .hero-map-label::after {
+      content: '';
+      display: block;
+      width: 20px;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .world-map-wrap { display: none; }
+    .map-dot        { display: none; }
+    .map-country    { display: none; }
+
+    /* Country legend pills */
+    .map-legend {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .map-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-soft);
+      border-radius: 100px;
+      padding: 5px 13px;
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+      cursor: default;
+    }
+
+    .map-pill:hover {
+      border-color: var(--border);
+      color: var(--gold);
+      background: var(--gold-dim);
+    }
+
+    .map-pill-dot {
+      width: 6px; height: 6px;
+      background: var(--gold);
+      border-radius: 50%;
+      box-shadow: 0 0 5px rgba(201,168,76,0.6);
+      animation: pillPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pillPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.7); }
     }
 
     @keyframes fadeSlideUp {
       from { opacity: 0; transform: translateY(24px); }
       to { opacity: 1; transform: translateY(0); }
     }
+
 
     /* ===== MAIN CONTAINER ===== */
     .main-container {
@@ -1100,7 +1153,6 @@
       }
       .dropdown.open .dropdown-menu { display: block; }
       .navbar-link { width: 100%; font-size: 0.95rem; padding: 12px 16px; }
-      .hero-stats { gap: 24px; flex-wrap: wrap; justify-content: center; }
       .footer-content { grid-template-columns: 1fr; gap: 28px; }
       .filter-controls { flex-direction: column; }
       .main-container { padding: 0 16px; }
@@ -1342,7 +1394,7 @@
     <div class="hero-content">
       <div class="hero-tag">Live Box Office Intelligence</div>
       <h1 class="hero-title">
-        Track Every<br><span class="gold">Rupee & Dollar</span><br>at the Box Office
+        The<br><span class="gold">CineNation</span><br>Box Office
       </h1>
       <p class="hero-subtitle">
         Real-time collection data, territory-wise breakdowns, and deep analytics for the films that matter.
@@ -1351,18 +1403,14 @@
         <a href="#latest" class="btn-primary">Browse Collections ↓</a>
         <a href="#explorerSection" class="btn-outline">Explore All Data</a>
       </div>
-      <div class="hero-stats">
-        <div class="hero-stat-item">
-          <div class="hero-stat-num">100+</div>
-          <div class="hero-stat-label">Movies Tracked</div>
-        </div>
-        <div class="hero-stat-item">
-          <div class="hero-stat-num">5</div>
-          <div class="hero-stat-label">Countries</div>
-        </div>
-        <div class="hero-stat-item">
-          <div class="hero-stat-num">Live</div>
-          <div class="hero-stat-label">Data Updates</div>
+      <div class="hero-map">
+        <div class="hero-map-label">Live Coverage</div>
+        <div class="map-legend">
+          <div class="map-pill"><span class="map-pill-dot"></span>🇮🇳 India</div>
+          <div class="map-pill"><span class="map-pill-dot" style="animation-delay:0.4s"></span>🇺🇸 USA</div>
+          <div class="map-pill"><span class="map-pill-dot" style="animation-delay:0.8s"></span>🇬🇧 UK</div>
+          <div class="map-pill"><span class="map-pill-dot" style="animation-delay:1.2s"></span>🇨🇦 Canada</div>
+          <div class="map-pill"><span class="map-pill-dot" style="animation-delay:1.6s"></span>🇦🇺 Australia</div>
         </div>
       </div>
     </div>
@@ -1477,10 +1525,9 @@
         </div>
         <div class="footer-section">
           <h4>Connect</h4>
-          <p>Follow for the latest updates and insights.</p>
+          <p>Follow us for the latest box office updates.</p>
           <div class="social-links">
-            <a href="#" class="social-link">Twitter</a>
-            <a href="#" class="social-link">GitHub</a>
+            <a href="https://x.com/TheCineNation" target="_blank" rel="noopener" class="social-link">𝕏 Twitter</a>
           </div>
         </div>
       </div>
