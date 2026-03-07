@@ -1034,8 +1034,83 @@ const NavbarManager = {
    SETTINGS MODAL
 =========================== */
 const Settings = {
+  // Passcode stored as a simple hash — not plain text
+  // SHA-like: sum of char codes XOR'd with position, base36
+  // Passcode is: "cine2025" — change here to update
+  _PASSCODE_HASH: (() => {
+    const s = 'cine2025';
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return h.toString(36);
+  })(),
+
+  _hashInput(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+    return h.toString(36);
+  },
+
+  _unlocked: false,
+
   init() {
-    // Inject modal HTML into body
+    // ---- PASSCODE MODAL ----
+    const passModal = document.createElement('div');
+    passModal.id = 'passcodeModal';
+    passModal.style.cssText = `
+      position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);
+      z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;`;
+    passModal.innerHTML = `
+      <div id="passcodeCard" style="background:#13131a;border:1px solid rgba(201,168,76,0.3);border-radius:16px;
+                  padding:36px 40px;max-width:380px;width:100%;text-align:center;position:relative;
+                  box-shadow:0 40px 80px rgba(0,0,0,0.7);
+                  animation:passCardIn 0.35s cubic-bezier(0.34,1.56,0.64,1) both;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;
+                    background:linear-gradient(90deg,transparent,#c9a84c,transparent);border-radius:16px 16px 0 0;"></div>
+        <div style="font-size:2rem;margin-bottom:12px;">🔐</div>
+        <h3 style="font-family:'Playfair Display',serif;color:#c9a84c;font-size:1.2rem;margin-bottom:6px;">Access Required</h3>
+        <p style="color:#5a5852;font-size:0.78rem;font-family:'Space Mono',monospace;letter-spacing:0.08em;margin-bottom:24px;">ENTER PASSCODE TO CONTINUE</p>
+        <input id="passcodeInput" type="password" placeholder="••••••••"
+          style="width:100%;background:#0e0e12;border:1px solid rgba(255,255,255,0.08);border-radius:8px;
+                 padding:13px 16px;color:#f0ede6;font-family:'Space Mono',monospace;font-size:1rem;
+                 outline:none;text-align:center;letter-spacing:0.3em;transition:border-color 0.2s;margin-bottom:16px;" />
+        <div id="passcodeError" style="display:none;background:rgba(224,82,82,0.1);border:1px solid rgba(224,82,82,0.25);
+             border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:0.8rem;color:#e05252;
+             font-family:'DM Sans',sans-serif;line-height:1.5;"></div>
+        <div style="display:flex;gap:10px;">
+          <button id="passcodeSubmitBtn" style="flex:1;background:#c9a84c;color:#070709;border:none;border-radius:8px;
+                  padding:12px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:0.88rem;
+                  cursor:pointer;transition:all 0.2s;letter-spacing:0.04em;">Unlock</button>
+          <button id="passcodeCancelBtn" style="background:transparent;color:#5a5852;border:1px solid rgba(255,255,255,0.08);
+                  border-radius:8px;padding:12px 18px;font-family:'DM Sans',sans-serif;font-size:0.82rem;
+                  cursor:pointer;transition:all 0.2s;">✕</button>
+        </div>
+      </div>`;
+    document.body.appendChild(passModal);
+
+    // Add keyframe for passcode card entrance
+    const style = document.createElement('style');
+    style.textContent = `@keyframes passCardIn {
+      from { opacity:0; transform:scale(0.85) translateY(20px); }
+      to   { opacity:1; transform:scale(1)    translateY(0); }
+    }
+    @keyframes shake {
+      0%,100% { transform:translateX(0); }
+      20%,60% { transform:translateX(-8px); }
+      40%,80% { transform:translateX(8px); }
+    }`;
+    document.head.appendChild(style);
+
+    // Passcode input events
+    const pInput = document.getElementById('passcodeInput');
+    pInput.addEventListener('focus',  function() { this.style.borderColor = 'rgba(201,168,76,0.5)'; });
+    pInput.addEventListener('blur',   function() { this.style.borderColor = 'rgba(255,255,255,0.08)'; });
+    pInput.addEventListener('keydown', e => { if (e.key === 'Enter') Settings._checkPasscode(); });
+
+    document.getElementById('passcodeSubmitBtn').onclick = () => Settings._checkPasscode();
+    document.getElementById('passcodeCancelBtn').onclick = () => Settings._closePasscode();
+    passModal.addEventListener('click', e => { if (e.target === passModal) Settings._closePasscode(); });
+
+    // ---- SETTINGS MODAL ----
     const modal = document.createElement('div');
     modal.id = 'settingsModal';
     modal.style.cssText = `
@@ -1100,11 +1175,11 @@ const Settings = {
     gear.onclick = () => Settings.open();
     document.querySelector('.navbar-container')?.appendChild(gear);
 
-    // Load saved token from sessionStorage (not localStorage — safer)
+    // Load saved token from sessionStorage
     const saved = sessionStorage.getItem('gh_token');
     if (saved) { CONFIG.githubToken = saved; GitHubAPI.clearCache(); }
 
-    // Wire buttons
+    // Wire settings modal buttons
     document.getElementById('saveTokenBtn').onclick = () => Settings.save();
     document.getElementById('clearTokenBtn').onclick = () => Settings.clearToken();
     document.getElementById('closeSettingsBtn').onclick = () => Settings.close();
@@ -1117,7 +1192,52 @@ const Settings = {
     });
   },
 
-  async open() {
+  // ---- PASSCODE GATE ----
+  open() {
+    if (this._unlocked) {
+      // Already verified this session — go straight to settings
+      this._openSettings();
+    } else {
+      // Show passcode modal first
+      const pm = document.getElementById('passcodeModal');
+      pm.style.display = 'flex';
+      // Reset state
+      document.getElementById('passcodeInput').value = '';
+      document.getElementById('passcodeError').style.display = 'none';
+      setTimeout(() => document.getElementById('passcodeInput').focus(), 100);
+    }
+  },
+
+  _checkPasscode() {
+    const val = document.getElementById('passcodeInput').value;
+    const errEl = document.getElementById('passcodeError');
+    const card  = document.getElementById('passcodeCard');
+
+    if (this._hashInput(val) === this._PASSCODE_HASH) {
+      // Correct — unlock for this session and open settings
+      this._unlocked = true;
+      this._closePasscode();
+      setTimeout(() => this._openSettings(), 200);
+    } else {
+      // Wrong — shake card + show error
+      card.style.animation = 'none';
+      card.offsetHeight; // reflow
+      card.style.animation = 'shake 0.4s ease';
+      errEl.style.display = 'block';
+      errEl.innerHTML = `Wrong passcode. Ask <strong style="color:#f0ede6;">@nikhilntr9</strong> for access.`;
+      document.getElementById('passcodeInput').value = '';
+      document.getElementById('passcodeInput').focus();
+      Utils.showToast('Wrong passcode — ask @nikhilntr9', 'error');
+    }
+  },
+
+  _closePasscode() {
+    document.getElementById('passcodeModal').style.display = 'none';
+    document.getElementById('passcodeInput').value = '';
+    document.getElementById('passcodeError').style.display = 'none';
+  },
+
+  async _openSettings() {
     const modal = document.getElementById('settingsModal');
     const input = document.getElementById('tokenInput');
     modal.style.display = 'flex';
@@ -1129,8 +1249,8 @@ const Settings = {
       const { remaining, limit, reset } = rl.rate;
       const resetTime = new Date(reset * 1000).toLocaleTimeString();
       const statusEl = document.getElementById('rateLimitStatus');
-      const textEl = document.getElementById('rateLimitText');
-      const banner = document.getElementById('rateLimitBanner');
+      const textEl   = document.getElementById('rateLimitText');
+      const banner   = document.getElementById('rateLimitBanner');
       statusEl.style.display = 'block';
       textEl.innerHTML = `<span style="color:${remaining < 10 ? '#e05252' : '#52c97a'};font-weight:600;">${remaining}</span>
         <span style="color:#5a5852;"> / ${limit} requests remaining · resets at ${resetTime}</span>`;
@@ -1159,9 +1279,8 @@ const Settings = {
     GitHubAPI.clearCache();
     Utils.showToast('Token saved — reloading data…', 'success');
     Settings.close();
-    // Re-initialize so new token is used immediately
     const container = document.getElementById('explorer');
-    if (container) { container.innerHTML = ''; }
+    if (container) container.innerHTML = '';
     Explorer.initialize();
   },
 
@@ -1173,14 +1292,11 @@ const Settings = {
     Utils.showToast('Token cleared', 'info');
   },
 
-  // Call this when a 403 is hit anywhere to prompt user
   promptForToken(errorMsg) {
     const banner = document.getElementById('rateLimitBanner');
-    if (banner) {
-      banner.style.display = 'block';
-      banner.textContent = errorMsg;
-    }
-    Settings.open();
+    if (banner) { banner.style.display = 'block'; banner.textContent = errorMsg; }
+    // For rate-limit auto-prompts, still require passcode
+    this.open();
   }
 };
 
@@ -1204,6 +1320,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
+      const passcodeModal = document.getElementById('passcodeModal');
+      if (passcodeModal?.style.display === 'flex') { Settings._closePasscode(); return; }
       const settingsModal = document.getElementById('settingsModal');
       if (settingsModal?.style.display === 'flex') { Settings.close(); return; }
       if (AppState.currentView !== 'root') Navigation.goBack();
