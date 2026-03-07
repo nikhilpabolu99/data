@@ -137,10 +137,11 @@ const GitHubAPI = {
    NAVIGATION
 =========================== */
 const Navigation = {
-  pushState(view) {
+  // Each entry: { view, renderFn } — renderFn re-renders that level when going back
+  pushState(view, renderFn) {
     AppState.navigationStack.push({
       view: AppState.currentView,
-      content: document.getElementById('explorer').innerHTML
+      renderFn
     });
     AppState.currentView = view;
   },
@@ -149,10 +150,8 @@ const Navigation = {
     if (AppState.navigationStack.length > 0) {
       const prev = AppState.navigationStack.pop();
       AppState.currentView = prev.view;
-      const ex = document.getElementById('explorer');
-      ex.innerHTML = prev.content;
-      // Reattach back buttons
-      ex.querySelectorAll('.back-button').forEach(btn => btn.onclick = () => Navigation.goBack());
+      // Re-render the previous level fresh — no stale innerHTML, all handlers live
+      prev.renderFn();
     } else {
       this.goToRoot();
     }
@@ -163,6 +162,15 @@ const Navigation = {
     AppState.currentView = 'root';
     const el = document.getElementById('explorer');
     if (el) { el.innerHTML = ''; Explorer.loadFolders('', 'explorer', true); }
+  },
+
+  // Wipe stale stack and close JSON viewer before any external entry point
+  resetToExplorer() {
+    AppState.navigationStack = [];
+    AppState.currentView = 'root';
+    document.getElementById('jsonViewerSection')?.classList.remove('show');
+    document.getElementById('explorerSection')?.classList.remove('hidden');
+    JsonViewer._reset();
   }
 };
 
@@ -199,8 +207,25 @@ const UI = {
   showAlphabetNavigation() {
     const container = document.getElementById('explorer');
     if (!container) return;
-    Navigation.pushState('alphabet');
-    this.clearAndShowHeader(container, '← Back', 'Browse by First Letter');
+    // Push root's render function so Back rebuilds the root "movies" button
+    Navigation.pushState('alphabet', () => {
+      container.innerHTML = '';
+      Explorer.loadFolders('', 'explorer', true);
+    });
+    this._renderAlphabet(container);
+  },
+
+  _renderAlphabet(container) {
+    container = container || document.getElementById('explorer');
+    container.innerHTML = '';
+    const back = this.btn('← Back', 'explorer-button back-button');
+    back.onclick = () => Navigation.goBack();
+    container.appendChild(back);
+    const h = document.createElement('div');
+    h.className = 'section-title';
+    h.style.cssText = 'margin: 24px 0 16px; font-size: 1.4rem;';
+    h.textContent = 'Browse by First Letter';
+    container.appendChild(h);
     const grid = document.createElement('div');
     grid.className = 'alphabet-grid';
     Utils.ALPHABET.forEach(letter => {
@@ -279,7 +304,7 @@ const Explorer = {
   async showMoviesByLetter(letter) {
     const container = document.getElementById('explorer');
     if (!container) return;
-    Navigation.pushState(`letter-${letter}`);
+    Navigation.pushState(`letter-${letter}`, () => UI._renderAlphabet(container));
     UI.clearAndShowHeader(container, '← Back to Letters', `Movies — "${letter}"`);
     const loading = Utils.createLoading('Loading movies…');
     container.appendChild(loading);
@@ -300,17 +325,22 @@ const Explorer = {
   },
 
   async showMovieFolder(path, name) {
-    await this._showFolder(path, name, `← Back to Movies`);
+    await this._showFolder(path, name, '← Back to Movies', () => {
+      // Re-run the letter view for this movie's first letter
+      Explorer.showMoviesByLetter(name.charAt(0).toUpperCase());
+    });
   },
 
-  async showSubFolder(path, name) {
-    await this._showFolder(path, name, '← Back');
+  async showSubFolder(path, name, parentPath, parentName) {
+    await this._showFolder(path, name, '← Back', () => {
+      Explorer.showMovieFolder(parentPath, parentName);
+    });
   },
 
-  async _showFolder(path, name, backText) {
+  async _showFolder(path, name, backText, backFn) {
     const container = document.getElementById('explorer');
     if (!container) return;
-    Navigation.pushState(`folder-${path}`);
+    Navigation.pushState(`folder-${path}`, backFn);
     UI.clearAndShowHeader(container, backText, name);
     const loading = Utils.createLoading('Loading…');
     container.appendChild(loading);
@@ -321,7 +351,7 @@ const Explorer = {
       data.forEach(item => {
         if (item.type === 'dir') {
           const btn = UI.btn('📂 ' + item.name);
-          btn.onclick = () => this.showSubFolder(item.path, item.name);
+          btn.onclick = () => this.showSubFolder(item.path, item.name, path, name);
           container.appendChild(btn);
         } else if (item.type === 'file' && item.name.endsWith('.json')) {
           const btn = UI.btn('📄 ' + item.name, 'explorer-button file-button');
@@ -339,7 +369,10 @@ const Explorer = {
   async showMoviesByCountry(country) {
     const container = document.getElementById('explorer');
     if (!container) return;
-    Navigation.pushState(`country-${country}`);
+    Navigation.pushState(`country-${country}`, () => {
+      container.innerHTML = '';
+      Explorer.loadFolders('', 'explorer', true);
+    });
     UI.clearAndShowHeader(container, '← Back', `${country.toUpperCase()} Collections`);
     const loading = Utils.createLoading(`Searching "${country}" data…`);
     container.appendChild(loading);
@@ -369,7 +402,9 @@ const Explorer = {
   async showLatestCountryData(movieName, country) {
     const container = document.getElementById('explorer');
     if (!container) return;
-    Navigation.pushState(`country-data-${movieName}-${country}`);
+    Navigation.pushState(`country-data-${movieName}-${country}`, () => {
+      Explorer.showMoviesByCountry(country);
+    });
     UI.clearAndShowHeader(container, '← Back', `${movieName} — ${country.toUpperCase()}`);
     const loading = Utils.createLoading('Loading latest collection…');
     container.appendChild(loading);
@@ -416,21 +451,9 @@ const LatestReleases = {
           <div class="movie-card-badge">Live Data</div>
         </div>`;
       card.onclick = async () => {
-        // If JSON viewer is open, close it first
-        document.getElementById('jsonViewerSection')?.classList.remove('show');
-        document.getElementById('explorerSection')?.classList.remove('hidden');
-        JsonViewer._reset();
-
-        // Reset navigation so we're starting fresh (not mid-stack)
-        AppState.navigationStack = [];
-        AppState.currentView = 'root';
-
-        // Now load the movie folder into the explorer
+        Navigation.resetToExplorer();
         await Explorer.showMovieFolder(`movies/${item.movieFolderName}`, item.movieDisplayName);
-
-        // Scroll to explorer section
-        const sec = document.getElementById('explorerSection');
-        if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById('explorerSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       };
       container.appendChild(card);
     });
@@ -540,6 +563,11 @@ const JsonViewer = {
     document.getElementById('explorerSection')?.classList.remove('hidden');
     document.getElementById('jsonViewerSection')?.classList.remove('show');
     this._reset();
+    // Reset nav stack — the user is returning to explorer root, not mid-stack
+    AppState.navigationStack = [];
+    AppState.currentView = 'root';
+    const el = document.getElementById('explorer');
+    if (el) { el.innerHTML = ''; Explorer.loadFolders('', 'explorer', true); }
   },
 
   show() {
@@ -883,20 +911,9 @@ const NavbarManager = {
       if (parent?.querySelector('.dropdown-toggle')?.textContent.toLowerCase().includes('country')) {
         item.addEventListener('click', e => {
           e.preventDefault();
-
-          // Close JSON viewer if open, reveal explorer
-          document.getElementById('jsonViewerSection')?.classList.remove('show');
-          document.getElementById('explorerSection')?.classList.remove('hidden');
-          JsonViewer._reset();
-
-          // Always reset nav stack so switching countries starts fresh
-          AppState.navigationStack = [];
-          AppState.currentView = 'root';
-
+          Navigation.resetToExplorer();
           const country = item.getAttribute('href').replace('#', '').toLowerCase();
           Explorer.showMoviesByCountry(country);
-
-          // Scroll to explorer
           document.getElementById('explorerSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
       }
