@@ -883,10 +883,21 @@ const NavbarManager = {
       if (parent?.querySelector('.dropdown-toggle')?.textContent.toLowerCase().includes('country')) {
         item.addEventListener('click', e => {
           e.preventDefault();
+
+          // Close JSON viewer if open, reveal explorer
+          document.getElementById('jsonViewerSection')?.classList.remove('show');
+          document.getElementById('explorerSection')?.classList.remove('hidden');
+          JsonViewer._reset();
+
+          // Always reset nav stack so switching countries starts fresh
+          AppState.navigationStack = [];
+          AppState.currentView = 'root';
+
           const country = item.getAttribute('href').replace('#', '').toLowerCase();
           Explorer.showMoviesByCountry(country);
-          // scroll to explorer
-          document.getElementById('explorerSection')?.scrollIntoView({ behavior: 'smooth' });
+
+          // Scroll to explorer
+          document.getElementById('explorerSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
       }
     });
