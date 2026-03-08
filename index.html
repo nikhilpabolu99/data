@@ -1317,6 +1317,13 @@
       90%  { opacity: 0.3; }
       100% { transform: translateY(-160px) rotate(360deg) scale(0.6); opacity: 0; }
     }
+    /* ===== HERO FAN PICKER ===== */
+    .hero-pick-btn:hover { transform: translateY(-2px); }
+    .hero-pick-btn.selected {
+      border-color: rgba(201,168,76,0.6) !important;
+      background: rgba(201,168,76,0.1) !important;
+    }
+
     /* ===== ABOUT POPUP ===== */
     #aboutOverlay {
       position: fixed; inset: 0;
@@ -1375,16 +1382,41 @@
       <span class="popup-butterfly" style="left:20%;bottom:20%;animation-duration:4.5s;animation-delay:0.5s;">🦋</span>
       <span class="popup-butterfly" style="left:70%;bottom:8%;animation-duration:3s;animation-delay:1.5s;">🦋</span>
 
-      <span class="congrats-sparkle">🦋</span>
-      <div class="congrats-title">Welcome to MeherNolan!</div>
-      <div class="congrats-divider"></div>
-      <div class="congrats-subtitle">Your Box Office Intelligence Platform is ready.</div>
-      <div class="congrats-msg">
-        Explore real-time collection data, territory-wise breakdowns,<br>
-        and deep analytics for every movie that matters.<br><br>
-        <span style="color: var(--gold); font-weight: 600;">Happy exploring! ✨</span>
+      <!-- SCREEN 1: First visit — hero picker -->
+      <div id="heroPickerScreen">
+        <span class="congrats-sparkle">🎬</span>
+        <div class="congrats-title">Which Hero Are You Stanning?</div>
+        <div class="congrats-divider"></div>
+        <div class="congrats-subtitle" style="margin-bottom:22px;">Pick your favourite star &amp; join the fan army!</div>
+        <div id="heroGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;"></div>
+        <div style="display:flex;gap:8px;margin-bottom:20px;align-items:center;">
+          <input id="customHeroInput" type="text" placeholder="Other hero… type name"
+            style="flex:1;background:#0e0e12;border:1px solid rgba(255,255,255,0.1);border-radius:8px;
+                   padding:10px 14px;color:#f0ede6;font-family:'DM Sans',sans-serif;font-size:0.85rem;
+                   outline:none;transition:border-color 0.2s;" />
+          <button id="customHeroBtn"
+            style="background:transparent;border:1px solid rgba(201,168,76,0.5);color:#c9a84c;
+                   border-radius:8px;padding:10px 18px;font-family:'DM Sans',sans-serif;font-size:0.82rem;
+                   font-weight:700;cursor:pointer;transition:all 0.2s;white-space:nowrap;">Stan! 🤘</button>
+        </div>
+        <p style="color:#5a5852;font-size:0.68rem;font-family:'Space Mono',monospace;letter-spacing:0.08em;margin:0;">YOUR VOTE IS SAVED &amp; COUNTED FOR ALL VISITORS</p>
       </div>
-      <button class="congrats-close" id="congratsCloseBtn">Let's Explore →</button>
+
+      <!-- SCREEN 2: Returning visitor -->
+      <div id="welcomeBackScreen" style="display:none;">
+        <span class="congrats-sparkle" id="welcomeEmoji">👑</span>
+        <div class="congrats-title" id="welcomeTitle">Welcome Back!</div>
+        <div class="congrats-divider"></div>
+        <div class="congrats-subtitle" id="welcomeSubtitle"></div>
+        <div class="congrats-msg" id="welcomeMsg" style="margin-bottom:24px;"></div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+          <button class="congrats-close" id="congratsCloseBtn">Let's Explore →</button>
+          <button id="changeHeroBtn"
+            style="background:transparent;color:#5a5852;border:1px solid rgba(255,255,255,0.1);
+                   padding:13px 20px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:0.82rem;
+                   cursor:pointer;transition:all 0.2s;">Switch Hero</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1494,6 +1526,18 @@
 
   <!-- Main Container -->
   <div class="main-container">
+
+    <!-- Fan Army Counter Section -->
+    <section class="section" id="fanArmySection" style="padding-top:20px;padding-bottom:50px;">
+      <div class="section-header" style="margin-bottom:28px;">
+        <div class="section-eyebrow">Fan Army 🏆</div>
+        <h2 class="section-title">Who's Running This Site?</h2>
+        <p class="section-subtitle">Live count of fans who visited — pick your hero to join the army</p>
+      </div>
+      <div id="fanCounterGrid" style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;"></div>
+      <p id="fanCounterNote" style="margin-top:18px;font-size:0.7rem;font-family:'Space Mono',monospace;
+         color:#5a5852;letter-spacing:0.08em;text-align:center;">LOADING FAN COUNTS…</p>
+    </section>
 
     <!-- Latest Releases Section -->
     <section class="latest-section section" id="latest">
@@ -1739,33 +1783,196 @@
       butterflies.forEach(b => { b.alpha = Math.min(b.alpha, 0.25); });
     }, 12000);
 
-    /* ============ CONGRATS POPUP ============ */
-    const overlay = document.getElementById('congratsOverlay');
-    const closeBtn = document.getElementById('congratsCloseBtn');
+    /* ============ HERO FAN PICKER + COUNTER ============ */
+    (function() {
+      const overlay  = document.getElementById('congratsOverlay');
+      const HEROES = [
+        { key: 'ntr',     label: 'NTR',     emoji: '🦁' },
+        { key: 'pk',      label: 'PK',      emoji: '🌟' },
+        { key: 'mb',      label: 'MB',      emoji: '🔥' },
+        { key: 'prabhas', label: 'Prabhas', emoji: '👑' },
+        { key: 'aa',      label: 'AA',      emoji: '⚡' },
+      ];
 
-    // Show after 800ms
-    setTimeout(() => overlay.classList.add('show'), 800);
+      const STORAGE_KEY = 'cinenation-fan-counts';
+      const USER_KEY    = 'cinenation-my-hero';
 
-    function closePopup() {
-      overlay.style.opacity = '0';
-      overlay.style.transition = 'opacity 0.5s ease';
-      setTimeout(() => {
-        overlay.style.display = 'none';
-      }, 500);
-      // Stop butterfly animation
-      cancelAnimationFrame(animId);
-      ctx.clearRect(0, 0, W, H);
-      canvas.style.display = 'none';
-    }
+      /* ------- Storage helpers (shared = visible to all) ------- */
+      async function getCounts() {
+        try {
+          const r = await window.storage.get(STORAGE_KEY, true);
+          return r ? JSON.parse(r.value) : {};
+        } catch { return {}; }
+      }
 
-    closeBtn.addEventListener('click', closePopup);
-    overlay.addEventListener('click', function(e) {
-      if (e.target === overlay) closePopup();
-    });
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape' && overlay.classList.contains('show')) closePopup();
-    });
-  })();
+      async function incrementCount(heroKey) {
+        let counts = await getCounts();
+        counts[heroKey] = (counts[heroKey] || 0) + 1;
+        try { await window.storage.set(STORAGE_KEY, JSON.stringify(counts), true); } catch {}
+        return counts;
+      }
+
+      async function getMyHero() {
+        try {
+          const r = await window.storage.get(USER_KEY, false);
+          return r ? r.value : null;
+        } catch { return null; }
+      }
+
+      async function saveMyHero(heroKey) {
+        try { await window.storage.set(USER_KEY, heroKey, false); } catch {}
+      }
+
+      /* ------- Build hero picker buttons ------- */
+      const grid = document.getElementById('heroGrid');
+      HEROES.forEach(h => {
+        const btn = document.createElement('button');
+        btn.className = 'hero-pick-btn';
+        btn.dataset.key = h.key;
+        btn.innerHTML = `<span style="font-size:1.4rem;">${h.emoji}</span><span style="font-weight:700;font-size:0.95rem;">${h.label}</span><span class="hero-pick-count" id="hc-${h.key}" style="font-size:0.7rem;color:#5a5852;font-family:'Space Mono',monospace;">…</span>`;
+        btn.style.cssText = `display:flex;flex-direction:column;align-items:center;gap:4px;
+          background:#0e0e12;border:1px solid rgba(255,255,255,0.08);border-radius:12px;
+          padding:14px 10px;cursor:pointer;transition:all 0.2s;color:#f0ede6;font-family:'DM Sans',sans-serif;`;
+        btn.onmouseenter = () => { btn.style.borderColor='rgba(201,168,76,0.5)'; btn.style.background='rgba(201,168,76,0.06)'; };
+        btn.onmouseleave = () => { btn.style.borderColor='rgba(255,255,255,0.08)'; btn.style.background='#0e0e12'; };
+        btn.onclick = () => pickHero(h.key, h.label, h.emoji);
+        grid.appendChild(btn);
+      });
+
+      /* Custom hero input */
+      const customInput = document.getElementById('customHeroInput');
+      const customBtn   = document.getElementById('customHeroBtn');
+      customInput.addEventListener('focus', function() { this.style.borderColor='rgba(201,168,76,0.5)'; });
+      customInput.addEventListener('blur',  function() { this.style.borderColor='rgba(255,255,255,0.1)'; });
+      customInput.addEventListener('keydown', e => { if (e.key === 'Enter') submitCustom(); });
+      customBtn.onclick = submitCustom;
+      function submitCustom() {
+        const val = customInput.value.trim();
+        if (!val) return;
+        const key   = 'other_' + val.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+        pickHero(key, val, '🎬');
+      }
+
+      /* ------- Pick hero flow ------- */
+      async function pickHero(key, label, emoji) {
+        await saveMyHero(key);
+        const counts = await incrementCount(key);
+        updateCounterUI(counts);
+        showWelcomeBack(key, label, emoji, counts[key] || 1, false);
+      }
+
+      /* ------- Welcome back screen ------- */
+      function showWelcomeBack(key, label, emoji, myCount, isReturn) {
+        document.getElementById('heroPickerScreen').style.display = 'none';
+        const wb = document.getElementById('welcomeBackScreen');
+        wb.style.display = 'block';
+        document.getElementById('welcomeEmoji').textContent  = emoji;
+        document.getElementById('welcomeTitle').textContent  = isReturn ? `Welcome Back, ${label} Fan!` : `You're In, ${label} Fan! 🎉`;
+        document.getElementById('welcomeSubtitle').textContent = isReturn
+          ? `Still stanning ${label} — respect! 🙌`
+          : `You joined the ${label} fan army!`;
+        document.getElementById('welcomeMsg').innerHTML = isReturn
+          ? `You're fan visitor <strong style="color:var(--gold);">#${myCount}</strong> for ${label} on this site.<br>Check the Fan Army section below to see the full leaderboard.`
+          : `<strong style="color:var(--gold);">Your vote is counted!</strong> Check the Fan Army section below to see who's dominating the site.`;
+      }
+
+      /* ------- Close popup ------- */
+      function closePopup() {
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.5s ease';
+        setTimeout(() => { overlay.style.display = 'none'; }, 500);
+        cancelAnimationFrame(animId);
+        ctx.clearRect(0, 0, W, H);
+        canvas.style.display = 'none';
+      }
+
+      document.getElementById('congratsCloseBtn')?.addEventListener('click', closePopup);
+      overlay.addEventListener('click', e => { if (e.target === overlay) closePopup(); });
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && overlay.classList.contains('show')) closePopup();
+      });
+
+      document.getElementById('changeHeroBtn')?.addEventListener('click', () => {
+        document.getElementById('welcomeBackScreen').style.display = 'none';
+        document.getElementById('heroPickerScreen').style.display  = 'block';
+      });
+
+      /* ------- Fan counter section on main page ------- */
+      function updateCounterUI(counts) {
+        const grid = document.getElementById('fanCounterGrid');
+        const note = document.getElementById('fanCounterNote');
+        if (!grid) return;
+
+        // Merge known heroes + any custom ones
+        const allKeys = new Set([...HEROES.map(h=>h.key), ...Object.keys(counts)]);
+        const entries = [...allKeys]
+          .map(key => {
+            const hero = HEROES.find(h=>h.key===key);
+            return { key, label: hero?.label || key.replace('other_','').replace(/_/g,' '), emoji: hero?.emoji || '🎬', count: counts[key] || 0 };
+          })
+          .filter(e => e.count > 0)
+          .sort((a,b) => b.count - a.count);
+
+        if (entries.length === 0) {
+          grid.innerHTML = '';
+          note.textContent = 'No votes yet — be the first! Open the popup to pick your hero.';
+          return;
+        }
+
+        const total = entries.reduce((s,e) => s+e.count, 0);
+        grid.innerHTML = entries.map((e,i) => {
+          const pct = Math.round(e.count / total * 100);
+          const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+          return `<div style="background:#13131a;border:1px solid rgba(201,168,76,${i===0?'0.35':'0.1'});
+              border-radius:14px;padding:18px 22px;min-width:130px;flex:1;
+              box-shadow:${i===0?'0 4px 24px rgba(201,168,76,0.12)':'none'};
+              transition:transform 0.2s;" onmouseenter="this.style.transform='translateY(-2px)'" onmouseleave="this.style.transform='translateY(0)'">
+            <div style="font-size:1.6rem;margin-bottom:4px;">${e.emoji} ${medal}</div>
+            <div style="font-family:'Playfair Display',serif;font-size:1rem;color:${i===0?'#c9a84c':'#f0ede6'};font-weight:700;margin-bottom:2px;">${e.label}</div>
+            <div style="font-size:1.5rem;font-weight:800;color:${i===0?'#c9a84c':'#f0ede6'};font-family:'DM Sans',sans-serif;">${e.count}</div>
+            <div style="font-size:0.68rem;font-family:'Space Mono',monospace;color:#5a5852;letter-spacing:0.06em;margin-top:2px;">${pct}% of visitors</div>
+            <div style="margin-top:10px;height:3px;background:rgba(255,255,255,0.05);border-radius:2px;">
+              <div style="height:3px;width:${pct}%;background:${i===0?'#c9a84c':'rgba(201,168,76,0.35)'};border-radius:2px;transition:width 0.6s;"></div>
+            </div>
+          </div>`;
+        }).join('');
+
+        note.innerHTML = `<strong style="color:#a09d94;">${total}</strong> fans visited · Pick your hero above to be counted`;
+      }
+
+      /* ------- Init: check if returning visitor ------- */
+      async function init() {
+        // Load counts first and render counter
+        const counts = await getCounts();
+        updateCounterUI(counts);
+
+        // Check if user already picked
+        const myHero = await getMyHero();
+        if (myHero) {
+          // Returning visitor
+          const hero = HEROES.find(h => h.key === myHero);
+          const label = hero?.label || myHero.replace('other_','').replace(/_/g,' ');
+          const emoji = hero?.emoji || '🎬';
+          // Show welcome back screen directly
+          document.getElementById('heroPickerScreen').style.display = 'none';
+          showWelcomeBack(myHero, label, emoji, counts[myHero] || 1, true);
+          // Highlight their button if it exists
+          const btn = document.querySelector(`.hero-pick-btn[data-key="${myHero}"]`);
+          if (btn) { btn.style.borderColor='rgba(201,168,76,0.6)'; btn.style.background='rgba(201,168,76,0.1)'; }
+        }
+
+        // Load counts into picker buttons
+        HEROES.forEach(h => {
+          const el = document.getElementById('hc-' + h.key);
+          if (el) el.textContent = (counts[h.key] || 0) + ' fans';
+        });
+
+        // Show popup after 800ms
+        setTimeout(() => overlay.classList.add('show'), 800);
+      }
+
+      init();
+    })();
 
   /* ============ ABOUT POPUP ============ */
   (function() {
