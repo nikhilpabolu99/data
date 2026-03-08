@@ -1382,41 +1382,16 @@
       <span class="popup-butterfly" style="left:20%;bottom:20%;animation-duration:4.5s;animation-delay:0.5s;">🦋</span>
       <span class="popup-butterfly" style="left:70%;bottom:8%;animation-duration:3s;animation-delay:1.5s;">🦋</span>
 
-      <!-- SCREEN 1: First visit — hero picker -->
-      <div id="heroPickerScreen">
-        <span class="congrats-sparkle">🎬</span>
-        <div class="congrats-title">Which Hero Are You Stanning?</div>
-        <div class="congrats-divider"></div>
-        <div class="congrats-subtitle" style="margin-bottom:22px;">Pick your favourite star &amp; join the fan army!</div>
-        <div id="heroGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;"></div>
-        <div style="display:flex;gap:8px;margin-bottom:20px;align-items:center;">
-          <input id="customHeroInput" type="text" placeholder="Other hero… type name"
-            style="flex:1;background:#0e0e12;border:1px solid rgba(255,255,255,0.1);border-radius:8px;
-                   padding:10px 14px;color:#f0ede6;font-family:'DM Sans',sans-serif;font-size:0.85rem;
-                   outline:none;transition:border-color 0.2s;" />
-          <button id="customHeroBtn"
-            style="background:transparent;border:1px solid rgba(201,168,76,0.5);color:#c9a84c;
-                   border-radius:8px;padding:10px 18px;font-family:'DM Sans',sans-serif;font-size:0.82rem;
-                   font-weight:700;cursor:pointer;transition:all 0.2s;white-space:nowrap;">Stan! 🤘</button>
-        </div>
-        <p style="color:#5a5852;font-size:0.68rem;font-family:'Space Mono',monospace;letter-spacing:0.08em;margin:0;">YOUR VOTE IS SAVED &amp; COUNTED FOR ALL VISITORS</p>
+      <span class="congrats-sparkle">🦋</span>
+      <div class="congrats-title">Welcome to MeherNolan!</div>
+      <div class="congrats-divider"></div>
+      <div class="congrats-subtitle">Your Box Office Intelligence Platform is ready.</div>
+      <div class="congrats-msg">
+        Explore real-time collection data, territory-wise breakdowns,<br>
+        and deep analytics for every movie that matters.<br><br>
+        <span style="color:var(--gold);font-weight:600;">Happy exploring! ✨</span>
       </div>
-
-      <!-- SCREEN 2: Returning visitor -->
-      <div id="welcomeBackScreen" style="display:none;">
-        <span class="congrats-sparkle" id="welcomeEmoji">👑</span>
-        <div class="congrats-title" id="welcomeTitle">Welcome Back!</div>
-        <div class="congrats-divider"></div>
-        <div class="congrats-subtitle" id="welcomeSubtitle"></div>
-        <div class="congrats-msg" id="welcomeMsg" style="margin-bottom:24px;"></div>
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-          <button class="congrats-close" id="congratsCloseBtn">Let's Explore →</button>
-          <button id="changeHeroBtn"
-            style="background:transparent;color:#5a5852;border:1px solid rgba(255,255,255,0.1);
-                   padding:13px 20px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:0.82rem;
-                   cursor:pointer;transition:all 0.2s;">Switch Hero</button>
-        </div>
-      </div>
+      <button class="congrats-close" id="congratsCloseBtn">Let's Explore →</button>
     </div>
   </div>
 
@@ -1528,15 +1503,38 @@
   <div class="main-container">
 
     <!-- Fan Army Counter Section -->
+    <!-- Fan Army Section -->
     <section class="section" id="fanArmySection" style="padding-top:20px;padding-bottom:50px;">
-      <div class="section-header" style="margin-bottom:28px;">
+      <div class="section-header" style="margin-bottom:32px;">
         <div class="section-eyebrow">Fan Army 🏆</div>
-        <h2 class="section-title">Who's Running This Site?</h2>
-        <p class="section-subtitle">Live count of fans who visited — pick your hero to join the army</p>
+        <h2 class="section-title">Which Hero Are You Stanning?</h2>
+        <p class="section-subtitle">Pick your favourite — see who's running this site</p>
       </div>
-      <div id="fanCounterGrid" style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;"></div>
-      <p id="fanCounterNote" style="margin-top:18px;font-size:0.7rem;font-family:'Space Mono',monospace;
-         color:#5a5852;letter-spacing:0.08em;text-align:center;">LOADING FAN COUNTS…</p>
+
+      <!-- STATE A: Picker (shown before voting) -->
+      <div id="fanPickerState">
+        <div id="fanHeroGrid" style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:16px;"></div>
+        <div style="display:flex;gap:8px;max-width:380px;margin:0 auto;">
+          <input id="fanCustomInput" type="text" placeholder="Other hero… type name"
+            style="flex:1;background:#13131a;border:1px solid rgba(255,255,255,0.08);border-radius:8px;
+                   padding:10px 14px;color:#f0ede6;font-family:'DM Sans',sans-serif;font-size:0.85rem;
+                   outline:none;transition:border-color 0.2s;" />
+          <button id="fanCustomBtn"
+            style="background:transparent;border:1px solid rgba(201,168,76,0.4);color:#c9a84c;
+                   border-radius:8px;padding:10px 18px;font-family:'DM Sans',sans-serif;font-size:0.85rem;
+                   font-weight:700;cursor:pointer;white-space:nowrap;transition:all 0.2s;">Stan! 🤘</button>
+        </div>
+      </div>
+
+      <!-- STATE B: Results (shown after voting) -->
+      <div id="fanResultsState" style="display:none;">
+        <div id="fanResultsGrid" style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:16px;"></div>
+        <p style="text-align:center;font-size:0.72rem;font-family:'Space Mono',monospace;color:#5a5852;letter-spacing:0.08em;">
+          <button id="fanChangeBtn" style="background:none;border:none;color:#5a5852;font-family:'Space Mono',monospace;
+            font-size:0.72rem;letter-spacing:0.08em;cursor:pointer;text-decoration:underline;padding:0;">change your hero</button>
+          &nbsp;·&nbsp;<span id="fanTotalNote"></span>
+        </p>
+      </div>
     </section>
 
     <!-- Latest Releases Section -->
@@ -1783,190 +1781,135 @@
       butterflies.forEach(b => { b.alpha = Math.min(b.alpha, 0.25); });
     }, 12000);
 
-    /* ============ HERO FAN PICKER + COUNTER ============ */
-    (function() {
-      const overlay = document.getElementById('congratsOverlay');
-      const HEROES = [
-        { key: 'ntr',     label: 'NTR',     emoji: '🦁' },
-        { key: 'pk',      label: 'PK',      emoji: '🌟' },
-        { key: 'mb',      label: 'MB',      emoji: '🔥' },
-        { key: 'prabhas', label: 'Prabhas', emoji: '👑' },
-        { key: 'aa',      label: 'AA',      emoji: '⚡' },
-      ];
+    /* ============ CONGRATS POPUP ============ */
+    const overlay  = document.getElementById('congratsOverlay');
+    const closeBtn = document.getElementById('congratsCloseBtn');
+    setTimeout(() => overlay.classList.add('show'), 800);
+    function closePopup() {
+      overlay.style.opacity = '0';
+      overlay.style.transition = 'opacity 0.5s ease';
+      setTimeout(() => { overlay.style.display = 'none'; }, 500);
+      cancelAnimationFrame(animId);
+      ctx.clearRect(0, 0, W, H);
+      canvas.style.display = 'none';
+    }
+    closeBtn.addEventListener('click', closePopup);
+    overlay.addEventListener('click', e => { if (e.target === overlay) closePopup(); });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && overlay.classList.contains('show')) closePopup();
+    });
 
+    /* ============ FAN ARMY SECTION ============ */
+    (function() {
+      const HEROES = [
+        { key:'ntr',     label:'NTR',     emoji:'🦁' },
+        { key:'pk',      label:'PK',      emoji:'🌟' },
+        { key:'mb',      label:'MB',      emoji:'🔥' },
+        { key:'prabhas', label:'Prabhas', emoji:'👑' },
+        { key:'aa',      label:'AA',      emoji:'⚡' },
+      ];
       const COUNTS_KEY = 'cinenation-fan-counts';
       const USER_KEY   = 'cinenation-my-hero';
 
-      /* ------- localStorage helpers ------- */
-      function getCounts() {
-        try { return JSON.parse(localStorage.getItem(COUNTS_KEY) || '{}'); } catch { return {}; }
-      }
-      function saveCounts(c) {
-        try { localStorage.setItem(COUNTS_KEY, JSON.stringify(c)); } catch {}
-      }
-      function incrementCount(heroKey) {
-        const c = getCounts();
-        c[heroKey] = (c[heroKey] || 0) + 1;
-        saveCounts(c);
-        return c;
-      }
-      function getMyHero() {
-        try { return localStorage.getItem(USER_KEY) || null; } catch { return null; }
-      }
-      function saveMyHero(heroKey) {
-        try { localStorage.setItem(USER_KEY, heroKey); } catch {}
-      }
+      function getCounts() { try { return JSON.parse(localStorage.getItem(COUNTS_KEY)||'{}'); } catch { return {}; } }
+      function saveCounts(c) { try { localStorage.setItem(COUNTS_KEY, JSON.stringify(c)); } catch {} }
+      function getMyHero() { try { return localStorage.getItem(USER_KEY)||null; } catch { return null; } }
+      function saveMyHero(k) { try { localStorage.setItem(USER_KEY, k); } catch {} }
 
-      /* ------- Build hero picker buttons ------- */
-      const heroGrid = document.getElementById('heroGrid');
-      const counts = getCounts();
+      /* Build picker hero buttons */
+      const pickerGrid = document.getElementById('fanHeroGrid');
       HEROES.forEach(h => {
         const btn = document.createElement('button');
-        btn.className = 'hero-pick-btn';
-        btn.dataset.key = h.key;
-        btn.innerHTML = `
-          <span style="font-size:1.5rem;">${h.emoji}</span>
-          <span style="font-weight:700;font-size:0.95rem;">${h.label}</span>
-          <span id="hc-${h.key}" style="font-size:0.68rem;color:#5a5852;font-family:'Space Mono',monospace;">${(counts[h.key]||0)} fans</span>`;
-        btn.style.cssText = `display:flex;flex-direction:column;align-items:center;gap:5px;
-          background:#0e0e12;border:1px solid rgba(255,255,255,0.08);border-radius:12px;
-          padding:14px 10px;cursor:pointer;transition:all 0.2s;color:#f0ede6;font-family:'DM Sans',sans-serif;`;
-        btn.onmouseenter = () => { btn.style.borderColor='rgba(201,168,76,0.5)'; btn.style.background='rgba(201,168,76,0.06)'; };
-        btn.onmouseleave = () => { btn.style.borderColor='rgba(255,255,255,0.08)'; btn.style.background='#0e0e12'; };
-        btn.onclick = () => pickHero(h.key, h.label, h.emoji);
-        heroGrid.appendChild(btn);
+        btn.innerHTML = `<span style="font-size:1.8rem;display:block;margin-bottom:6px;">${h.emoji}</span>
+                         <span style="font-weight:700;font-size:0.95rem;">${h.label}</span>`;
+        btn.style.cssText = `background:#13131a;border:1px solid rgba(255,255,255,0.08);border-radius:14px;
+          padding:18px 22px;cursor:pointer;color:#f0ede6;font-family:'DM Sans',sans-serif;
+          min-width:100px;transition:all 0.2s;text-align:center;`;
+        btn.onmouseenter = () => { btn.style.borderColor='rgba(201,168,76,0.5)'; btn.style.background='rgba(201,168,76,0.07)'; btn.style.transform='translateY(-3px)'; };
+        btn.onmouseleave = () => { btn.style.borderColor='rgba(255,255,255,0.08)'; btn.style.background='#13131a'; btn.style.transform='translateY(0)'; };
+        btn.onclick = () => vote(h.key, h.label, h.emoji);
+        pickerGrid.appendChild(btn);
       });
 
-      /* Custom hero input */
-      const customInput = document.getElementById('customHeroInput');
-      const customBtn   = document.getElementById('customHeroBtn');
-      customInput.addEventListener('focus', function() { this.style.borderColor='rgba(201,168,76,0.5)'; });
-      customInput.addEventListener('blur',  function() { this.style.borderColor='rgba(255,255,255,0.1)'; });
-      customInput.addEventListener('keydown', e => { if (e.key==='Enter') submitCustom(); });
-      customBtn.onclick = submitCustom;
+      /* Custom input */
+      const ci = document.getElementById('fanCustomInput');
+      const cb = document.getElementById('fanCustomBtn');
+      ci.addEventListener('focus', function() { this.style.borderColor='rgba(201,168,76,0.5)'; });
+      ci.addEventListener('blur',  function() { this.style.borderColor='rgba(255,255,255,0.08)'; });
+      ci.addEventListener('keydown', e => { if (e.key==='Enter') submitCustom(); });
+      cb.onclick = submitCustom;
       function submitCustom() {
-        const val = customInput.value.trim();
+        const val = ci.value.trim();
         if (!val) return;
         const key = 'other_' + val.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
-        pickHero(key, val, '🎬');
+        vote(key, val, '🎬');
       }
 
-      /* ------- Pick hero ------- */
-      function pickHero(key, label, emoji) {
+      /* Vote */
+      function vote(key, label, emoji) {
         saveMyHero(key);
-        const updated = incrementCount(key);
-        updateCounterUI(updated);
-        // Update count shown on button
-        const countEl = document.getElementById('hc-' + key);
-        if (countEl) countEl.textContent = (updated[key]||0) + ' fans';
-        showWelcomeBack(key, label, emoji, updated[key]||1, false);
+        const c = getCounts();
+        c[key] = (c[key]||0) + 1;
+        saveCounts(c);
+        showResults(c, key);
       }
 
-      /* ------- Welcome back screen ------- */
-      function showWelcomeBack(key, label, emoji, myCount, isReturn) {
-        document.getElementById('heroPickerScreen').style.display = 'none';
-        document.getElementById('welcomeBackScreen').style.display = 'block';
-        document.getElementById('welcomeEmoji').textContent = emoji;
-        document.getElementById('welcomeTitle').textContent = isReturn
-          ? `Welcome Back, ${label} Fan!`
-          : `You're In, ${label} Fan! 🎉`;
-        document.getElementById('welcomeSubtitle').textContent = isReturn
-          ? `Still stanning ${label} — respect! 🙌`
-          : `You joined the ${label} fan army!`;
-        document.getElementById('welcomeMsg').innerHTML = isReturn
-          ? `You're fan visitor <strong style="color:var(--gold);">#${myCount}</strong> for ${label} on this site.<br>Check the Fan Army section below to see the full leaderboard.`
-          : `<strong style="color:var(--gold);">Your vote is counted!</strong> Check the Fan Army section to see who's dominating.`;
-      }
-
-      /* ------- Close popup ------- */
-      function closePopup() {
-        overlay.style.opacity = '0';
-        overlay.style.transition = 'opacity 0.5s ease';
-        setTimeout(() => { overlay.style.display = 'none'; }, 500);
-        cancelAnimationFrame(animId);
-        ctx.clearRect(0, 0, W, H);
-        canvas.style.display = 'none';
-      }
-      document.getElementById('congratsCloseBtn')?.addEventListener('click', closePopup);
-      overlay.addEventListener('click', e => { if (e.target === overlay) closePopup(); });
-      document.addEventListener('keydown', e => {
-        if (e.key === 'Escape' && overlay.classList.contains('show')) closePopup();
-      });
-      document.getElementById('changeHeroBtn')?.addEventListener('click', () => {
-        document.getElementById('welcomeBackScreen').style.display = 'none';
-        document.getElementById('heroPickerScreen').style.display  = 'block';
-      });
-
-      /* ------- Fan counter section ------- */
-      function updateCounterUI(counts) {
-        const grid = document.getElementById('fanCounterGrid');
-        const note = document.getElementById('fanCounterNote');
-        if (!grid) return;
+      /* Show results leaderboard */
+      function showResults(counts, myKey) {
+        document.getElementById('fanPickerState').style.display  = 'none';
+        document.getElementById('fanResultsState').style.display = 'block';
 
         const allKeys = new Set([...HEROES.map(h=>h.key), ...Object.keys(counts)]);
         const entries = [...allKeys]
-          .map(key => {
-            const hero = HEROES.find(h=>h.key===key);
-            return {
-              key,
-              label: hero?.label || key.replace('other_','').replace(/_/g,' '),
-              emoji: hero?.emoji || '🎬',
-              count: counts[key] || 0
-            };
+          .map(k => {
+            const h = HEROES.find(x=>x.key===k);
+            return { key:k, label:h?.label||k.replace('other_','').replace(/_/g,' '), emoji:h?.emoji||'🎬', count:counts[k]||0 };
           })
-          .filter(e => e.count > 0)
-          .sort((a,b) => b.count - a.count);
+          .filter(e=>e.count>0)
+          .sort((a,b)=>b.count-a.count);
 
-        if (entries.length === 0) {
-          grid.innerHTML = '';
-          note.textContent = 'No votes yet — be the first! Open the popup to pick your hero.';
-          return;
-        }
-
-        const total = entries.reduce((s,e)=>s+e.count,0);
+        const total = entries.reduce((s,e)=>s+e.count, 0);
+        const grid  = document.getElementById('fanResultsGrid');
         grid.innerHTML = entries.map((e,i) => {
-          const pct   = Math.round(e.count / total * 100);
+          const pct   = Math.round(e.count/total*100);
           const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+          const isMe  = e.key === myKey;
           const isTop = i===0;
-          return `<div style="background:#13131a;border:1px solid rgba(201,168,76,${isTop?'0.4':'0.1'});
-              border-radius:14px;padding:18px 22px;min-width:130px;flex:1;text-align:center;
-              box-shadow:${isTop?'0 4px 28px rgba(201,168,76,0.12)':'none'};
-              transition:transform 0.2s;cursor:default;"
-              onmouseenter="this.style.transform='translateY(-3px)'"
-              onmouseleave="this.style.transform='translateY(0)'">
-            <div style="font-size:1.8rem;margin-bottom:6px;">${e.emoji}${medal?'<span style="font-size:1.1rem;">'+medal+'</span>':''}</div>
-            <div style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;
-                        color:${isTop?'#c9a84c':'#f0ede6'};margin-bottom:4px;">${e.label}</div>
-            <div style="font-size:1.8rem;font-weight:800;color:${isTop?'#c9a84c':'#f0ede6'};
-                        font-family:'DM Sans',sans-serif;line-height:1;">${e.count}</div>
-            <div style="font-size:0.65rem;font-family:'Space Mono',monospace;color:#5a5852;
-                        letter-spacing:0.06em;margin-top:4px;">${pct}% of voters</div>
+          return `<div style="background:#13131a;border:1px solid rgba(201,168,76,${isMe?'0.6':isTop?'0.3':'0.1'});
+              border-radius:14px;padding:20px 18px;min-width:120px;flex:1;text-align:center;
+              box-shadow:${isMe?'0 0 20px rgba(201,168,76,0.15)':isTop?'0 4px 20px rgba(201,168,76,0.08)':'none'};
+              position:relative;">
+            ${isMe?`<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+              background:#c9a84c;color:#070709;font-size:0.6rem;font-weight:700;font-family:'Space Mono',monospace;
+              padding:2px 8px;border-radius:20px;letter-spacing:0.06em;white-space:nowrap;">YOU</div>`:''}
+            <div style="font-size:1.8rem;margin-bottom:4px;">${e.emoji}</div>
+            ${medal?`<div style="font-size:1rem;margin-bottom:2px;">${medal}</div>`:''}
+            <div style="font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:700;
+                color:${isMe||isTop?'#c9a84c':'#f0ede6'};margin-bottom:6px;">${e.label}</div>
+            <div style="font-size:1.6rem;font-weight:800;color:${isMe||isTop?'#c9a84c':'#f0ede6'};
+                font-family:'DM Sans',sans-serif;line-height:1;">${e.count}</div>
+            <div style="font-size:0.62rem;font-family:'Space Mono',monospace;color:#5a5852;margin-top:3px;">${pct}%</div>
             <div style="margin-top:10px;height:3px;background:rgba(255,255,255,0.05);border-radius:2px;">
-              <div style="height:3px;width:${pct}%;background:${isTop?'#c9a84c':'rgba(201,168,76,0.3)'};border-radius:2px;"></div>
+              <div style="height:3px;width:${pct}%;background:${isMe||isTop?'#c9a84c':'rgba(201,168,76,0.25)'};border-radius:2px;"></div>
             </div>
           </div>`;
         }).join('');
 
-        note.innerHTML = `<strong style="color:#a09d94;">${total}</strong> fan vote${total!==1?'s':''} counted · pick your hero above to join`;
+        document.getElementById('fanTotalNote').textContent = `${total} fan vote${total!==1?'s':''} total`;
       }
 
-      /* ------- Init ------- */
-      const existingCounts = getCounts();
-      updateCounterUI(existingCounts);
+      /* Change hero button */
+      document.getElementById('fanChangeBtn')?.addEventListener('click', () => {
+        document.getElementById('fanResultsState').style.display = 'none';
+        document.getElementById('fanPickerState').style.display  = 'block';
+        try { localStorage.removeItem(USER_KEY); } catch {}
+      });
 
+      /* Init — if already voted, jump to results */
       const myHero = getMyHero();
       if (myHero) {
-        // Returning visitor — show welcome back screen
-        const hero  = HEROES.find(h=>h.key===myHero);
-        const label = hero?.label || myHero.replace('other_','').replace(/_/g,' ');
-        const emoji = hero?.emoji || '🎬';
-        document.getElementById('heroPickerScreen').style.display = 'none';
-        showWelcomeBack(myHero, label, emoji, existingCounts[myHero]||1, true);
+        showResults(getCounts(), myHero);
       }
-
-      // Always show popup after 800ms
-      setTimeout(() => overlay.classList.add('show'), 800);
-
     })();
 
   /* ============ ABOUT POPUP ============ */
