@@ -581,99 +581,176 @@
       }
     });
   });
+  </script>
 
-  /* ===== FAN ARMY ===== */
-  (function() {
+  <!-- ===== FAN ARMY — Firebase Realtime (one vote per browser, shared globally) ===== -->
+  <script type="module">
+    import { initializeApp }                        from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import { getDatabase, ref, runTransaction, onValue } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+    // ✅ PASTE YOUR FIREBASE CONFIG HERE
+    const firebaseConfig = {
+  apiKey: "AIzaSyAQKCeUYyzl55UYAF8GhLEQBxQVtmLQHp4",
+  authDomain: "mehernolan.firebaseapp.com",
+  projectId: "mehernolan",
+  storageBucket: "mehernolan.firebasestorage.app",
+  messagingSenderId: "563279854226",
+  appId: "1:563279854226:web:b1afdffa86386fd7a5844b",
+  measurementId: "G-8K2WGFEHPT"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
+
     const HEROES = [
-      {key:'ntr',    label:'NTR',    emoji:'🦁'},
-      {key:'pk',     label:'PK',     emoji:'🌟'},
-      {key:'mb',     label:'MB',     emoji:'🔥'},
-      {key:'prabhas',label:'Prabhas',emoji:'👑'},
-      {key:'aa',     label:'AA',     emoji:'⚡'},
+      { key: 'ntr',     label: 'NTR',     emoji: '🦁' },
+      { key: 'pk',      label: 'PK',      emoji: '🌟' },
+      { key: 'mb',      label: 'MB',      emoji: '🔥' },
+      { key: 'prabhas', label: 'Prabhas', emoji: '👑' },
+      { key: 'aa',      label: 'AA',      emoji: '⚡' },
     ];
-    const COUNTS_KEY = 'mn-fan-counts';
-    const USER_KEY   = 'mn-my-hero';
 
-    function getCounts() { try { return JSON.parse(localStorage.getItem(COUNTS_KEY)||'{}'); } catch { return {}; } }
-    function saveCounts(c) { try { localStorage.setItem(COUNTS_KEY, JSON.stringify(c)); } catch {} }
-    function getMyHero() { try { return localStorage.getItem(USER_KEY)||null; } catch { return null; } }
-    function saveMyHero(k) { try { localStorage.setItem(USER_KEY, k); } catch {} }
+    // localStorage only stores WHICH hero this browser voted for — not the counts
+    const USER_KEY = 'mn-my-hero';
+    function getMyHero()   { try { return localStorage.getItem(USER_KEY); }   catch { return null; } }
+    function saveMyHero(k) { try { localStorage.setItem(USER_KEY, k); }       catch {} }
+    function clearMyHero() { try { localStorage.removeItem(USER_KEY); }       catch {} }
 
-    /* Build picker buttons */
+    /* ---- Build picker buttons ---- */
     const grid = document.getElementById('fanHeroGrid');
     HEROES.forEach(h => {
       const btn = document.createElement('button');
       btn.className = 'fan-hero-btn';
-      btn.innerHTML = '<span style="font-size:2rem;">' + h.emoji + '</span><span style="font-weight:700;font-size:0.95rem;">' + h.label + '</span>';
+      btn.innerHTML = '<span style="font-size:2rem;">' + h.emoji + '</span>' +
+                      '<span style="font-weight:700;font-size:0.95rem;">' + h.label + '</span>';
       btn.onclick = () => vote(h.key);
       grid.appendChild(btn);
     });
 
-    /* Custom input */
+    /* ---- Custom input ---- */
     const ci = document.getElementById('fanCustomInput');
     const cb = document.getElementById('fanCustomBtn');
-    ci.addEventListener('focus', function() { this.style.borderColor='rgba(201,168,76,0.5)'; });
-    ci.addEventListener('blur',  function() { this.style.borderColor='rgba(255,255,255,0.06)'; });
-    ci.addEventListener('keydown', e => { if(e.key==='Enter') submitCustom(); });
+    ci.addEventListener('focus', function() { this.style.borderColor = 'rgba(201,168,76,0.5)'; });
+    ci.addEventListener('blur',  function() { this.style.borderColor = 'rgba(255,255,255,0.06)'; });
+    ci.addEventListener('keydown', e => { if (e.key === 'Enter') submitCustom(); });
     cb.onclick = submitCustom;
     function submitCustom() {
       const val = ci.value.trim();
       if (!val) return;
-      const key = 'other_' + val.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
-      vote(key, val);
+      const key = 'other_' + val.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+      vote(key);
+      ci.value = '';
     }
 
-    function vote(key, customLabel) {
-      saveMyHero(key);
-      const c = getCounts();
-      c[key] = (c[key]||0) + 1;
-      saveCounts(c);
-      showResults(c, key);
+    /* ---- Vote: one per browser, globally shared ---- */
+    async function vote(key) {
+      const prev = getMyHero();
+
+      // Already voted for the same hero — just show results, no double count
+      if (prev === key) {
+        switchToResults(key);
+        return;
+      }
+
+      // Changing hero — remove old vote first
+      if (prev) {
+        await runTransaction(ref(db, 'fanvotes/' + prev), count => Math.max(0, (count || 0) - 1));
+      }
+
+      // Add new vote
+      await runTransaction(ref(db, 'fanvotes/' + key), count => (count || 0) + 1);
+
+      saveMyHero(key);       // remember choice in this browser
+      switchToResults(key);
     }
 
-    function showResults(counts, myKey) {
+    /* ---- Switch picker → results and start live listener ---- */
+    let listening = false;
+    function switchToResults(myKey) {
       document.getElementById('fanPickerState').style.display  = 'none';
       document.getElementById('fanResultsState').style.display = 'block';
+      startLiveListener(myKey);
+    }
 
-      const allEntries = Object.keys(counts).map(k => {
-        const h = HEROES.find(x=>x.key===k);
-        return { key:k, label:h?h.label:k.replace('other_','').replace(/_/g,' '), emoji:h?h.emoji:'🎬', count:counts[k]||0 };
-      }).filter(e=>e.count>0).sort((a,b)=>b.count-a.count);
+    function startLiveListener(myKey) {
+      if (listening) return; // already subscribed, no duplicate listeners
+      listening = true;
+      onValue(ref(db, 'fanvotes'), snapshot => {
+        renderResults(snapshot.val() || {}, myKey);
+      });
+    }
 
-      const total = allEntries.reduce((s,e)=>s+e.count,0);
-      const rg = document.getElementById('fanResultsGrid');
-      rg.innerHTML = allEntries.map((e,i) => {
-        const pct   = Math.round(e.count/total*100);
-        const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-        const isMe  = e.key===myKey;
-        const isTop = i===0;
-        return '<div style="background:var(--bg-card);border:1px solid rgba(201,168,76,' + (isMe?'0.6':isTop?'0.3':'0.1') + ');' +
+    /* ---- Render leaderboard ---- */
+    function renderResults(counts, myKey) {
+      const allEntries = Object.keys(counts)
+        .map(k => {
+          const h = HEROES.find(x => x.key === k);
+          return {
+            key:   k,
+            label: h ? h.label : k.replace('other_', '').replace(/_/g, ' '),
+            emoji: h ? h.emoji : '🎬',
+            count: counts[k] || 0
+          };
+        })
+        .filter(e => e.count > 0)
+        .sort((a, b) => b.count - a.count);
+
+      const total = allEntries.reduce((s, e) => s + e.count, 0);
+      const rg    = document.getElementById('fanResultsGrid');
+
+      rg.innerHTML = allEntries.map((e, i) => {
+        const pct   = total ? Math.round(e.count / total * 100) : 0;
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+        const isMe  = e.key === myKey;
+        const isTop = i === 0;
+
+        return '<div style="background:var(--bg-card);' +
+          'border:1px solid rgba(201,168,76,' + (isMe ? '0.6' : isTop ? '0.3' : '0.1') + ');' +
           'border-radius:14px;padding:20px 16px;min-width:110px;flex:1;text-align:center;position:relative;' +
-          'box-shadow:' + (isMe?'0 0 20px rgba(201,168,76,0.15)':isTop?'0 4px 20px rgba(201,168,76,0.08)':'none') + ';">' +
-          (isMe?'<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--bg-deep);font-size:0.6rem;font-weight:700;font-family:Space Mono,monospace;padding:2px 8px;border-radius:20px;white-space:nowrap;">YOU ✓</div>':'') +
+          'box-shadow:' + (isMe ? '0 0 20px rgba(201,168,76,0.15)' : isTop ? '0 4px 20px rgba(201,168,76,0.08)' : 'none') + ';' +
+          'transition:all 0.3s;">' +
+
+          (isMe ? '<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);' +
+            'background:var(--gold);color:var(--bg-deep);font-size:0.6rem;font-weight:700;' +
+            'font-family:Space Mono,monospace;padding:2px 8px;border-radius:20px;white-space:nowrap;">YOU ✓</div>' : '') +
+
           '<div style="font-size:1.8rem;margin-bottom:4px;">' + e.emoji + '</div>' +
-          (medal?'<div style="font-size:0.9rem;margin-bottom:2px;">' + medal + '</div>':'') +
-          '<div style="font-family:Playfair Display,serif;font-size:0.9rem;font-weight:700;color:' + (isMe||isTop?'var(--gold)':'var(--text-primary)') + ';margin-bottom:6px;">' + e.label + '</div>' +
-          '<div style="font-size:1.6rem;font-weight:800;color:' + (isMe||isTop?'var(--gold)':'var(--text-primary)') + ';font-family:DM Sans,sans-serif;line-height:1;">' + e.count + '</div>' +
+          (medal ? '<div style="font-size:0.9rem;margin-bottom:2px;">' + medal + '</div>' : '') +
+
+          '<div style="font-family:Playfair Display,serif;font-size:0.9rem;font-weight:700;' +
+            'color:' + (isMe || isTop ? 'var(--gold)' : 'var(--text-primary)') + ';margin-bottom:6px;">' + e.label + '</div>' +
+
+          '<div style="font-size:1.6rem;font-weight:800;' +
+            'color:' + (isMe || isTop ? 'var(--gold)' : 'var(--text-primary)') + ';' +
+            'font-family:DM Sans,sans-serif;line-height:1;">' + e.count + '</div>' +
+
           '<div style="font-size:0.62rem;font-family:Space Mono,monospace;color:var(--text-muted);margin-top:3px;">' + pct + '%</div>' +
+
           '<div style="margin-top:10px;height:3px;background:rgba(255,255,255,0.05);border-radius:2px;">' +
-            '<div style="height:3px;width:' + pct + '%;background:' + (isMe||isTop?'var(--gold)':'rgba(201,168,76,0.25)') + ';border-radius:2px;"></div>' +
+            '<div style="height:3px;width:' + pct + '%;' +
+              'background:' + (isMe || isTop ? 'var(--gold)' : 'rgba(201,168,76,0.25)') + ';' +
+              'border-radius:2px;transition:width 0.4s ease;"></div>' +
           '</div></div>';
       }).join('');
 
-      document.getElementById('fanTotalNote').textContent = total + ' vote' + (total!==1?'s':'') + ' total';
+      document.getElementById('fanTotalNote').textContent =
+        total + ' vote' + (total !== 1 ? 's' : '') + ' total';
     }
 
+    /* ---- "Change hero" button ---- */
     document.getElementById('fanChangeBtn')?.addEventListener('click', () => {
+      clearMyHero();
+      listening = false; // reset so next vote re-subscribes with new myKey
       document.getElementById('fanResultsState').style.display = 'none';
       document.getElementById('fanPickerState').style.display  = 'block';
-      try { localStorage.removeItem(USER_KEY); } catch {}
     });
 
-    /* Init */
+    /* ---- On page load: already voted? Go straight to results ---- */
     const myHero = getMyHero();
-    if (myHero) showResults(getCounts(), myHero);
-  })();
+    if (myHero) {
+      switchToResults(myHero);
+    }
   </script>
+
 </body>
 </html>
